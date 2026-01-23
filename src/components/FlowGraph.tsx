@@ -260,7 +260,7 @@ export default function FlowGraph() {
       if (node.id === activeNodeId) {
         return { 
           ...node, 
-          draggable: nodesDraggable,
+          draggable: nodesDraggable, // Respect global lock state
           data: { 
             ...node.data, 
             highlight: "self",
@@ -282,8 +282,7 @@ export default function FlowGraph() {
           : undefined;
       // Dim nodes that aren't highlighted when a node is selected
       const dimmed = selectedNodeId !== null && !highlightedNodeIds.has(node.id);
-      // Only allow dragging for highlighted nodes (upstream/downstream), not dimmed ones
-      // But respect the global nodesDraggable setting
+      // Only allow dragging if globally unlocked AND node is highlighted AND not dimmed
       const draggable = nodesDraggable && highlight !== undefined && !dimmed;
       return { ...node, draggable, data: { ...node.data, highlight, dimmed } };
     });

@@ -107,3 +107,13 @@ body {
   animation: bidirectional-glow-hover 2s ease-in-out infinite;
 }
 
+/* Ensure ReactFlow nodes are always clickable */
+.react-flow__node {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+.react-flow__node.selected {
+  pointer-events: auto !important;
+}
+
