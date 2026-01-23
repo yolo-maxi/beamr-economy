@@ -202,7 +202,7 @@ export default function FlowGraph() {
       return {
         styledNodes: nodes.map((node) => ({
           ...node,
-          draggable: false,
+          draggable: nodesDraggable,
           data: { ...node.data, highlight: undefined, dimmed: false },
         })),
         styledEdges: baseEdges,
@@ -260,7 +260,7 @@ export default function FlowGraph() {
       if (node.id === activeNodeId) {
         return { 
           ...node, 
-          draggable: true,
+          draggable: nodesDraggable,
           data: { 
             ...node.data, 
             highlight: "self",
@@ -283,12 +283,13 @@ export default function FlowGraph() {
       // Dim nodes that aren't highlighted when a node is selected
       const dimmed = selectedNodeId !== null && !highlightedNodeIds.has(node.id);
       // Only allow dragging for highlighted nodes (upstream/downstream), not dimmed ones
-      const draggable = highlight !== undefined && !dimmed;
+      // But respect the global nodesDraggable setting
+      const draggable = nodesDraggable && highlight !== undefined && !dimmed;
       return { ...node, draggable, data: { ...node.data, highlight, dimmed } };
     });
 
     return { styledNodes, styledEdges };
-  }, [edges, selectedNodeId, nodes]);
+  }, [edges, selectedNodeId, nodes, nodesDraggable]);
 
   const handleNodeClick: NodeMouseHandler = (_, node) => {
     if (node.type !== "user") return;
@@ -431,7 +432,7 @@ export default function FlowGraph() {
         </Controls>
         <Background color="#1e293b" gap={20} />
         {/* Navigation Panel - contains user list and minimap */}
-        <Panel position="bottom-right" className="!m-3 !p-0">
+        <Panel position="bottom-right" className="!m-3 !p-0 pointer-events-auto">
           <NavigationPanel
             users={sortedUsers}
             selectedNodeId={selectedNodeId}
@@ -829,7 +830,7 @@ function NavigationPanel({
   }, [users, searchQuery]);
 
   return (
-    <div className="flex flex-col-reverse gap-1" style={{ width: NAV_PANEL_WIDTH }}>
+    <div className="flex flex-col-reverse gap-1 pointer-events-auto" style={{ width: NAV_PANEL_WIDTH }}>
       {/* MiniMap */}
       <MiniMap
         nodeColor={(node) => {
@@ -847,8 +848,11 @@ function NavigationPanel({
           {/* Header - at bottom, always visible */}
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex shrink-0 items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-slate-800/50"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="flex shrink-0 items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-slate-800/50 pointer-events-auto"
           >
             <div className="flex items-center gap-1.5">
               <svg className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

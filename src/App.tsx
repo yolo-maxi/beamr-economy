@@ -14,10 +14,10 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-visible">
       <FlowGraph />
       {/* Floating title */}
-      <div className="pointer-events-none absolute left-6 top-6 z-10">
+      <div className="pointer-events-none absolute left-6 top-4 z-10 overflow-visible">
         <div className="flex items-center gap-5">
           {beamrLogo && (
             <div className="relative">
