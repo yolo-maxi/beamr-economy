@@ -107,10 +107,18 @@ body {
   animation: bidirectional-glow-hover 2s ease-in-out infinite;
 }
 
-/* Ensure ReactFlow nodes are always clickable */
+/* Ensure ReactFlow nodes and pane are clickable */
 .react-flow__node {
   pointer-events: auto !important;
   cursor: pointer;
+}
+
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane.dragging {
+  cursor: grabbing;
 }
 
 .react-flow__node.selected {

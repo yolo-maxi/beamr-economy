@@ -388,6 +388,9 @@ export default function FlowGraph() {
         nodesFocusable={false}
         nodesConnectable={false}
         selectNodesOnDrag={false}
+        panOnDrag={true}
+        panOnScroll={true}
+        zoomOnScroll={true}
         onInit={setReactFlowInstance}
         onNodesChange={handleNodesChange}
         onNodeClick={handleNodeClick}
@@ -434,14 +437,16 @@ export default function FlowGraph() {
         </Controls>
         <Background color="#1e293b" gap={20} />
         {/* Navigation Panel - contains user list and minimap */}
-        <Panel position="bottom-right" className="!m-3 !p-0 pointer-events-auto">
-          <NavigationPanel
-            users={sortedUsers}
-            selectedNodeId={selectedNodeId}
-            onUserClick={handleUserListClick}
-            nodeCount={nodes.length}
-            edgeCount={edges.length}
-          />
+        <Panel position="bottom-right" className="!m-3 !p-0" style={{ pointerEvents: 'auto' }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <NavigationPanel
+              users={sortedUsers}
+              selectedNodeId={selectedNodeId}
+              onUserClick={handleUserListClick}
+              nodeCount={nodes.length}
+              edgeCount={edges.length}
+            />
+          </div>
         </Panel>
       </ReactFlow>
     </div>
@@ -832,7 +837,7 @@ function NavigationPanel({
   }, [users, searchQuery]);
 
   return (
-    <div className="flex flex-col-reverse gap-1 pointer-events-auto" style={{ width: NAV_PANEL_WIDTH }}>
+    <div className="flex flex-col-reverse gap-1" style={{ width: NAV_PANEL_WIDTH, pointerEvents: 'auto' }}>
       {/* MiniMap */}
       <MiniMap
         nodeColor={(node) => {
@@ -851,10 +856,13 @@ function NavigationPanel({
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="flex shrink-0 items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-slate-800/50 pointer-events-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex shrink-0 items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-slate-800/50"
+            style={{ pointerEvents: 'auto' }}
           >
             <div className="flex items-center gap-1.5">
               <svg className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
