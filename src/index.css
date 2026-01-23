@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* Animated glow for the title */
+@keyframes title-glow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes text-glow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1) translateX(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1) translateX(0);
+  }
+}
+
+@keyframes text-shimmer {
+  0%, 100% {
+    text-shadow: 
+      0 0 20px rgba(34, 211, 238, 0.7),
+      0 0 40px rgba(34, 211, 238, 0.5),
+      0 0 60px rgba(34, 211, 238, 0.3),
+      0 0 80px rgba(34, 211, 238, 0.2);
+  }
+  50% {
+    text-shadow: 
+      0 0 30px rgba(34, 211, 238, 1),
+      0 0 60px rgba(34, 211, 238, 0.8),
+      0 0 90px rgba(34, 211, 238, 0.5),
+      0 0 120px rgba(34, 211, 238, 0.3),
+      0 0 150px rgba(34, 211, 238, 0.2);
+  }
+}
+
+.animate-title-glow {
+  animation: title-glow 3s ease-in-out infinite;
+}
+
+.animate-text-glow {
+  animation: text-glow 3s ease-in-out infinite;
+}
+
+.animate-text-shimmer {
+  animation: text-shimmer 3s ease-in-out infinite;
+}
+
+/* Animated glow for bidirectional connections - pulses between green and red */
+@keyframes bidirectional-glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 50px rgba(34, 197, 94, 1),
+      0 0 100px rgba(34, 197, 94, 0.6),
+      0 0 150px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 0 50px rgba(239, 68, 68, 1),
+      0 0 100px rgba(239, 68, 68, 0.6),
+      0 0 150px rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes bidirectional-glow-hover {
+  0%, 100% {
+    box-shadow: 
+      0 0 35px rgba(34, 197, 94, 0.7),
+      0 0 70px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 
+      0 0 35px rgba(239, 68, 68, 0.7),
+      0 0 70px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.animate-bidirectional-glow {
+  animation: bidirectional-glow 2s ease-in-out infinite;
+}
+
+.animate-bidirectional-glow-hover {
+  animation: bidirectional-glow-hover 2s ease-in-out infinite;
+}
+
