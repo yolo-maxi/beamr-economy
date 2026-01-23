@@ -386,6 +386,9 @@ export default function FlowGraph() {
         maxZoom={2}
         className="bg-slate-950"
         nodesDraggable={nodesDraggable}
+        nodesFocusable={false}
+        nodesConnectable={false}
+        selectNodesOnDrag={false}
         onInit={setReactFlowInstance}
         onNodesChange={handleNodesChange}
         onNodeClick={handleNodeClick}
