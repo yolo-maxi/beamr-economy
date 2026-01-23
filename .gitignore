@@ -18,6 +18,10 @@ build/
 .env.test.local
 .env.production.local
 
+# Server environment variables
+server/.env
+server/node_modules
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

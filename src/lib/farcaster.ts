@@ -200,8 +200,41 @@ export async function fetchUserByUsername(username: string): Promise<{
   displayName?: string;
   avatarUrl?: string;
 } | null> {
+  // Use backend proxy if available (Vercel API routes or custom proxy)
+  // On Vercel, API routes are at /api/*, so we use relative paths
+  // For local dev with Express server, use VITE_API_BASE_URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "";
+  const apiUrl = apiBase 
+    ? `${apiBase}/api/farcaster/user/${encodeURIComponent(username)}`
+    : `/api/farcaster/user/${encodeURIComponent(username)}`;
+  
+  try {
+    const response = await fetch(apiUrl);
+    if (response.ok) {
+      const payload = (await response.json()) as { user?: NeynarUser };
+      const user = payload.user;
+      if (!user) return null;
+      return {
+        username: readUserName(user) ?? username,
+        displayName: user.display_name ?? user.displayName,
+        avatarUrl: readAvatarUrl(user) ?? undefined,
+      };
+    }
+    // If API route returns 500 (not configured), fall through to direct API
+    if (response.status === 500) {
+      throw new Error("API proxy not configured");
+    }
+    return null;
+  } catch (error) {
+    // Fall through to direct API if proxy fails
+  }
+
+  // Fallback to direct API (not recommended - exposes API key)
   const apiKey = import.meta.env.VITE_NEYNAR_API_KEY as string | undefined;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn("No API key or proxy configured. Set VITE_API_BASE_URL or VITE_NEYNAR_API_KEY");
+    return null;
+  }
 
   const base =
     (import.meta.env.VITE_NEYNAR_API_BASE as string | undefined) ??
@@ -233,9 +266,6 @@ export async function fetchUserByUsername(username: string): Promise<{
 }
 
 export async function resolveNeynarProfiles(addresses: string[]) {
-  const apiKey = import.meta.env.VITE_NEYNAR_API_KEY as string | undefined;
-  if (!apiKey) throw new Error("Neynar API key is not set");
-
   const unique = Array.from(
     new Set(addresses.map((address) => address.toLowerCase()))
   );
@@ -248,6 +278,81 @@ export async function resolveNeynarProfiles(addresses: string[]) {
 
   const remaining = unique.filter((address) => !mapping[address]);
   if (!remaining.length) return mapping;
+
+  // Use backend proxy if available (Vercel API routes or custom proxy)
+  // On Vercel, API routes are at /api/*, so we use relative paths
+  // For local dev with Express server, use VITE_API_BASE_URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "";
+  const apiUrl = apiBase 
+    ? `${apiBase}/api/farcaster/profiles`
+    : `/api/farcaster/profiles`;
+  
+  try {
+    const batchSize = Number(
+      import.meta.env.VITE_NEYNAR_BATCH_SIZE ?? DEFAULT_BATCH_SIZE
+    );
+    const batches = chunk(remaining, Number.isFinite(batchSize) ? batchSize : 100);
+
+    const results = await Promise.all(
+      batches.map(async (batch) => {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ addresses: batch }),
+        });
+        if (!response.ok) {
+          // If API route returns 500 (not configured), throw to fall through
+          if (response.status === 500) {
+            throw new Error("API proxy not configured");
+          }
+          return [];
+        }
+        const payload = (await response.json()) as unknown;
+        return normalizePayloadEntries(payload);
+      })
+    );
+
+      for (const entries of results) {
+        for (const entry of entries) {
+          if (!entry) continue;
+          if (entry.address && entry.user) {
+            const username = readUserName(entry.user);
+            const avatarUrl = readAvatarUrl(entry.user);
+            if (username || avatarUrl) {
+              mapping[entry.address.toLowerCase()] = {
+                username: username ?? undefined,
+                avatarUrl: avatarUrl ?? undefined,
+              };
+            }
+            continue;
+          }
+          const user = (entry as NeynarUser) ?? entry.user;
+          const username = readUserName(user);
+          const avatarUrl = readAvatarUrl(user);
+          if (!username && !avatarUrl) continue;
+          for (const address of collectUserAddresses(user)) {
+            mapping[address] = {
+              username: username ?? undefined,
+              avatarUrl: avatarUrl ?? undefined,
+            };
+          }
+        }
+      }
+
+    writeProfileCache(mapping);
+    return mapping;
+  } catch (error) {
+    // Fall through to direct API fallback if proxy fails or not configured
+  }
+
+  // Fallback to direct API (not recommended - exposes API key)
+  const apiKey = import.meta.env.VITE_NEYNAR_API_KEY as string | undefined;
+  if (!apiKey) {
+    console.warn("No API key or proxy configured. Set VITE_API_BASE_URL or VITE_NEYNAR_API_KEY");
+    return mapping; // Return cached results only
+  }
 
   const base =
     (import.meta.env.VITE_NEYNAR_API_BASE as string | undefined) ??
