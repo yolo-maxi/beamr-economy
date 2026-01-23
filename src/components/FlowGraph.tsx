@@ -36,6 +36,23 @@ const NODE_TYPES = {
   user: UserNode,
 };
 
+// Read user param from URL on initial load
+function getInitialSelectedUser(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("user");
+}
+
+// Update URL with selected user
+function updateUrlWithUser(userId: string | null) {
+  const url = new URL(window.location.href);
+  if (userId) {
+    url.searchParams.set("user", userId);
+  } else {
+    url.searchParams.delete("user");
+  }
+  window.history.replaceState({}, "", url.toString());
+}
+
 export default function FlowGraph() {
   const [config, setConfig] = useState<BeamrConfig>(() => readBeamrConfig());
   const [draftConfig, setDraftConfig] = useState<BeamrConfig>(() =>
@@ -45,11 +62,33 @@ export default function FlowGraph() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    getInitialSelectedUser
+  );
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentData, setCurrentData] = useState<BeamrData | null>(null);
   const [nodesDraggable, setNodesDraggable] = useState(true);
+
+  // Sync selectedNodeId to URL
+  useEffect(() => {
+    updateUrlWithUser(selectedNodeId);
+  }, [selectedNodeId]);
+
+  // When loading from URL with a user param, fit view once graph is ready
+  const initialUserFromUrl = useRef(getInitialSelectedUser());
+  useEffect(() => {
+    if (
+      initialUserFromUrl.current &&
+      reactFlowInstance &&
+      nodes.length > 0 &&
+      nodes.some((n) => n.id === initialUserFromUrl.current)
+    ) {
+      // Fit view to show the whole graph with selection highlighted
+      reactFlowInstance.fitView({ duration: 600 });
+      initialUserFromUrl.current = null; // Only do this once
+    }
+  }, [reactFlowInstance, nodes]);
 
   // Load cached data immediately on mount and when config changes
   useEffect(() => {
