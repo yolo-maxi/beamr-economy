@@ -354,7 +354,7 @@ export default function FlowGraph() {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="absolute inset-0">
       {showEmptyState && (
         <div className="absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-slate-300">
           <div className="max-w-2xl space-y-4 rounded-lg border border-slate-800 bg-slate-900/60 p-6">
