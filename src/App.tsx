@@ -83,6 +83,8 @@ export default function App() {
           editToken={editToken || undefined}
           onSend={handleSend}
           pollInterval={20000}
+          multiplayerMode
+          defaultMultiplayer
         />
       )}
     </div>

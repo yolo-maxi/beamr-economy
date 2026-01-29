@@ -1,9 +1,8 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 type PriceData = {
   price: number;
   priceChange24h: number | null;
-  priceHistory: number[];
 };
 
 // BEAMR token on Base chain
@@ -11,12 +10,10 @@ const BEAMR_TOKEN = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
 const DEXSCREENER_API = `https://api.dexscreener.com/latest/dex/tokens/${BEAMR_TOKEN}`;
 const POLL_INTERVAL_MS = 20_000; // 20 seconds
 const TOTAL_SUPPLY = 100_000_000_000; // 100 billion BEAMR tokens
-const MAX_HISTORY_POINTS = 20; // Store last 20 prices for sparkline
 
 export default function PriceIndicator() {
   const [data, setData] = useState<PriceData | null>(null);
   const [error, setError] = useState(false);
-  const priceHistoryRef = useRef<number[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -33,14 +30,7 @@ export default function PriceIndicator() {
         const priceChange24h = pair?.priceChange?.h24 ? parseFloat(pair.priceChange.h24) : null;
         
         if (mounted && typeof price === "number" && !isNaN(price)) {
-          // Update price history
-          priceHistoryRef.current = [...priceHistoryRef.current, price].slice(-MAX_HISTORY_POINTS);
-          
-          setData({
-            price,
-            priceChange24h,
-            priceHistory: [...priceHistoryRef.current],
-          });
+          setData({ price, priceChange24h });
           setError(false);
         }
       } catch {
@@ -66,7 +56,7 @@ export default function PriceIndicator() {
     );
   }
 
-  const { price, priceChange24h, priceHistory } = data;
+  const { price, priceChange24h } = data;
   
   // Calculate market cap (price * total supply)
   const marketCap = price * TOTAL_SUPPLY;
@@ -113,40 +103,6 @@ export default function PriceIndicator() {
           </span>
         </div>
       )}
-      
-      {/* Mini Sparkline */}
-      {priceHistory.length > 2 && (
-        <Sparkline data={priceHistory} color={isUp ? "#34d399" : isDown ? "#f87171" : "#94a3b8"} />
-      )}
     </div>
-  );
-}
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const width = 40;
-  const height = 16;
-  const padding = 2;
-  
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  
-  const points = data.map((value, index) => {
-    const x = padding + (index / (data.length - 1)) * (width - padding * 2);
-    const y = height - padding - ((value - min) / range) * (height - padding * 2);
-    return `${x},${y}`;
-  }).join(" ");
-  
-  return (
-    <svg width={width} height={height} className="shrink-0">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
