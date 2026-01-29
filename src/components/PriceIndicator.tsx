@@ -8,7 +8,7 @@ type PriceData = {
 // BEAMR token on Base chain
 const BEAMR_TOKEN = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
 const DEXSCREENER_API = `https://api.dexscreener.com/latest/dex/tokens/${BEAMR_TOKEN}`;
-const POLL_INTERVAL_MS = 30_000; // 30 seconds
+const POLL_INTERVAL_MS = 20_000; // 20 seconds
 const TOTAL_SUPPLY = 100_000_000_000; // 100 billion BEAMR tokens
 
 export default function PriceIndicator() {

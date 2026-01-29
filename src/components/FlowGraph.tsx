@@ -30,6 +30,7 @@ import {
   mergeBeamrData,
   hasBeamrDataChanges,
 } from "../lib/dataCache";
+import UserProfilePanel from "./UserProfilePanel";
 
 const POLL_INTERVAL_MS = 60_000;
 const NODE_TYPES = {
@@ -580,6 +581,13 @@ export default function FlowGraph() {
           </div>
         </Panel>
       </ReactFlow>
+      {/* User Profile Panel - shows when a node is selected */}
+      <UserProfilePanel
+        selectedNodeId={selectedNodeId}
+        nodes={nodes}
+        edges={edges}
+        onClose={() => setSelectedNodeId(null)}
+      />
     </div>
   );
 }
