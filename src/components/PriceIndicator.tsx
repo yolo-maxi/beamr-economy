@@ -5,9 +5,10 @@ type PriceData = {
   previousPrice: number | null;
 };
 
-const COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price";
-const COIN_ID = "ethereum"; // Can be changed to any coin on CoinGecko
-const POLL_INTERVAL_MS = 30_000; // 30 seconds (CoinGecko rate limits)
+// BEAMR token on Base chain
+const BEAMR_TOKEN = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
+const DEXSCREENER_API = `https://api.dexscreener.com/latest/dex/tokens/${BEAMR_TOKEN}`;
+const POLL_INTERVAL_MS = 30_000; // 30 seconds
 
 export default function PriceIndicator() {
   const [data, setData] = useState<PriceData | null>(null);
@@ -19,14 +20,15 @@ export default function PriceIndicator() {
 
     const fetchPrice = async () => {
       try {
-        const res = await fetch(
-          `${COINGECKO_API}?ids=${COIN_ID}&vs_currencies=usd`
-        );
+        const res = await fetch(DEXSCREENER_API);
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
-        const price = json[COIN_ID]?.usd;
         
-        if (mounted && typeof price === "number") {
+        // Get price from first pair (most liquid)
+        const priceStr = json?.pairs?.[0]?.priceUsd;
+        const price = priceStr ? parseFloat(priceStr) : null;
+        
+        if (mounted && typeof price === "number" && !isNaN(price)) {
           setData((prev) => ({
             price,
             previousPrice: prev?.price ?? previousPriceRef.current,
@@ -52,7 +54,7 @@ export default function PriceIndicator() {
     return (
       <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400">
         <span className="h-2 w-2 rounded-full bg-slate-500 animate-pulse" />
-        <span>ETH --</span>
+        <span>$BEAMR --</span>
       </div>
     );
   }
@@ -83,13 +85,27 @@ export default function PriceIndicator() {
   const arrowIcon =
     priceDirection === "up" ? "↑" : priceDirection === "down" ? "↓" : "";
 
+  // Format price with appropriate precision for small values
+  const formatPrice = (p: number): string => {
+    if (p < 0.00001) {
+      // For very small prices, show significant digits
+      return p.toExponential(2);
+    } else if (p < 0.01) {
+      return p.toFixed(8);
+    } else if (p < 1) {
+      return p.toFixed(4);
+    } else {
+      return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+  };
+
   return (
     <div
       className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs ring-1 transition-all duration-500 ${bgClass}`}
     >
-      <span className="text-slate-400">ETH</span>
+      <span className="text-cyan-400 font-medium">$BEAMR</span>
       <span className={`font-mono font-semibold tabular-nums ${colorClass}`}>
-        ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ${formatPrice(price)}
       </span>
       {arrowIcon && (
         <span className={`text-sm ${colorClass}`}>{arrowIcon}</span>
