@@ -133,8 +133,12 @@ export default function UserProfilePanel({
                 href={`https://warpcast.com/${userData.farcaster}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300 text-xs"
+                className="text-purple-400 hover:text-purple-300 text-xs flex items-center gap-1"
+                title="View on Farcaster"
               >
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.24 1H5.76A4.76 4.76 0 001 5.76v12.48A4.76 4.76 0 005.76 23h12.48A4.76 4.76 0 0023 18.24V5.76A4.76 4.76 0 0018.24 1zM12 17.5a5.5 5.5 0 110-11 5.5 5.5 0 010 11z"/>
+                </svg>
                 @{userData.farcaster}
               </a>
             )}
