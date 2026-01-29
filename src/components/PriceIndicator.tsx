@@ -9,6 +9,7 @@ type PriceData = {
 const BEAMR_TOKEN = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
 const DEXSCREENER_API = `https://api.dexscreener.com/latest/dex/tokens/${BEAMR_TOKEN}`;
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
+const TOTAL_SUPPLY = 100_000_000_000; // 100 billion BEAMR tokens
 
 export default function PriceIndicator() {
   const [data, setData] = useState<PriceData | null>(null);
@@ -60,11 +61,16 @@ export default function PriceIndicator() {
   }
 
   const { price, previousPrice } = data;
-  const priceDirection = previousPrice === null 
+  
+  // Calculate market cap (price * total supply)
+  const marketCap = price * TOTAL_SUPPLY;
+  const previousMarketCap = previousPrice ? previousPrice * TOTAL_SUPPLY : null;
+  
+  const priceDirection = previousMarketCap === null 
     ? "neutral" 
-    : price > previousPrice 
+    : marketCap > previousMarketCap 
       ? "up" 
-      : price < previousPrice 
+      : marketCap < previousMarketCap 
         ? "down" 
         : "neutral";
 
@@ -85,27 +91,27 @@ export default function PriceIndicator() {
   const arrowIcon =
     priceDirection === "up" ? "↑" : priceDirection === "down" ? "↓" : "";
 
-  // Format price with appropriate precision for small values
-  const formatPrice = (p: number): string => {
-    if (p < 0.00001) {
-      // For very small prices, show significant digits
-      return p.toExponential(2);
-    } else if (p < 0.01) {
-      return p.toFixed(8);
-    } else if (p < 1) {
-      return p.toFixed(4);
+  // Format market cap in a readable way
+  const formatMarketCap = (mc: number): string => {
+    if (mc >= 1_000_000_000) {
+      return `$${(mc / 1_000_000_000).toFixed(2)}B`;
+    } else if (mc >= 1_000_000) {
+      return `$${(mc / 1_000_000).toFixed(2)}M`;
+    } else if (mc >= 1_000) {
+      return `$${(mc / 1_000).toFixed(2)}K`;
     } else {
-      return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `$${mc.toFixed(2)}`;
     }
   };
 
   return (
     <div
       className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs ring-1 transition-all duration-500 ${bgClass}`}
+      title={`Price: $${price.toExponential(2)} • Supply: 100B`}
     >
       <span className="text-cyan-400 font-medium">$BEAMR</span>
       <span className={`font-mono font-semibold tabular-nums ${colorClass}`}>
-        ${formatPrice(price)}
+        {formatMarketCap(marketCap)}
       </span>
       {arrowIcon && (
         <span className={`text-sm ${colorClass}`}>{arrowIcon}</span>
