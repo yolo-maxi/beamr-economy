@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from "react";
 
 type PriceData = {
   price: number;
-  previousPrice: number | null;
+  priceChange24h: number | null;
+  priceHistory: number[];
 };
 
 // BEAMR token on Base chain
@@ -10,11 +11,12 @@ const BEAMR_TOKEN = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
 const DEXSCREENER_API = `https://api.dexscreener.com/latest/dex/tokens/${BEAMR_TOKEN}`;
 const POLL_INTERVAL_MS = 20_000; // 20 seconds
 const TOTAL_SUPPLY = 100_000_000_000; // 100 billion BEAMR tokens
+const MAX_HISTORY_POINTS = 20; // Store last 20 prices for sparkline
 
 export default function PriceIndicator() {
   const [data, setData] = useState<PriceData | null>(null);
   const [error, setError] = useState(false);
-  const previousPriceRef = useRef<number | null>(null);
+  const priceHistoryRef = useRef<number[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -25,16 +27,20 @@ export default function PriceIndicator() {
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
         
-        // Get price from first pair (most liquid)
-        const priceStr = json?.pairs?.[0]?.priceUsd;
+        const pair = json?.pairs?.[0];
+        const priceStr = pair?.priceUsd;
         const price = priceStr ? parseFloat(priceStr) : null;
+        const priceChange24h = pair?.priceChange?.h24 ? parseFloat(pair.priceChange.h24) : null;
         
         if (mounted && typeof price === "number" && !isNaN(price)) {
-          setData((prev) => ({
+          // Update price history
+          priceHistoryRef.current = [...priceHistoryRef.current, price].slice(-MAX_HISTORY_POINTS);
+          
+          setData({
             price,
-            previousPrice: prev?.price ?? previousPriceRef.current,
-          }));
-          previousPriceRef.current = price;
+            priceChange24h,
+            priceHistory: [...priceHistoryRef.current],
+          });
           setError(false);
         }
       } catch {
@@ -60,36 +66,20 @@ export default function PriceIndicator() {
     );
   }
 
-  const { price, previousPrice } = data;
+  const { price, priceChange24h, priceHistory } = data;
   
   // Calculate market cap (price * total supply)
   const marketCap = price * TOTAL_SUPPLY;
-  const previousMarketCap = previousPrice ? previousPrice * TOTAL_SUPPLY : null;
   
-  const priceDirection = previousMarketCap === null 
-    ? "neutral" 
-    : marketCap > previousMarketCap 
-      ? "up" 
-      : marketCap < previousMarketCap 
-        ? "down" 
-        : "neutral";
-
-  const colorClass = 
-    priceDirection === "up" 
-      ? "text-emerald-400" 
-      : priceDirection === "down" 
-        ? "text-red-400" 
-        : "text-slate-200";
-
-  const bgClass =
-    priceDirection === "up"
-      ? "bg-emerald-500/10 ring-emerald-500/30"
-      : priceDirection === "down"
-        ? "bg-red-500/10 ring-red-500/30"
-        : "bg-slate-800/60 ring-slate-700/50";
-
-  const arrowIcon =
-    priceDirection === "up" ? "↑" : priceDirection === "down" ? "↓" : "";
+  const isUp = priceChange24h !== null && priceChange24h >= 0;
+  const isDown = priceChange24h !== null && priceChange24h < 0;
+  
+  const colorClass = isUp ? "text-emerald-400" : isDown ? "text-red-400" : "text-slate-200";
+  const bgClass = isUp 
+    ? "bg-emerald-500/10 ring-emerald-500/30" 
+    : isDown 
+      ? "bg-red-500/10 ring-red-500/30" 
+      : "bg-slate-800/60 ring-slate-700/50";
 
   // Format market cap in a readable way
   const formatMarketCap = (mc: number): string => {
@@ -106,17 +96,57 @@ export default function PriceIndicator() {
 
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs ring-1 transition-all duration-500 ${bgClass}`}
-      title={`FDV (Fully Diluted Value)\nPrice: $${price.toExponential(4)}\nSupply: 100B tokens`}
+      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs ring-1 transition-all duration-500 ${bgClass}`}
+      title={`FDV (Fully Diluted Value)\nPrice: $${price.toExponential(4)}\nSupply: 100B tokens\n24h Change: ${priceChange24h?.toFixed(2) ?? 'N/A'}%`}
     >
       <span className="text-cyan-400 font-medium">$BEAMR</span>
-      <span className="text-slate-500 text-[10px]">FDV</span>
       <span className={`font-mono font-semibold tabular-nums ${colorClass}`}>
         {formatMarketCap(marketCap)}
       </span>
-      {arrowIcon && (
-        <span className={`text-sm ${colorClass}`}>{arrowIcon}</span>
+      
+      {/* 24h Change Indicator */}
+      {priceChange24h !== null && (
+        <div className={`flex items-center gap-0.5 ${colorClass}`}>
+          <span className="text-[10px]">{isUp ? "▲" : "▼"}</span>
+          <span className="text-[10px] font-medium">
+            {Math.abs(priceChange24h).toFixed(1)}%
+          </span>
+        </div>
+      )}
+      
+      {/* Mini Sparkline */}
+      {priceHistory.length > 2 && (
+        <Sparkline data={priceHistory} color={isUp ? "#34d399" : isDown ? "#f87171" : "#94a3b8"} />
       )}
     </div>
+  );
+}
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const width = 40;
+  const height = 16;
+  const padding = 2;
+  
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  
+  const points = data.map((value, index) => {
+    const x = padding + (index / (data.length - 1)) * (width - padding * 2);
+    const y = height - padding - ((value - min) / range) * (height - padding * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  
+  return (
+    <svg width={width} height={height} className="shrink-0">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
