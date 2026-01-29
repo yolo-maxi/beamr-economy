@@ -107,9 +107,10 @@ export default function PriceIndicator() {
   return (
     <div
       className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs ring-1 transition-all duration-500 ${bgClass}`}
-      title={`Price: $${price.toExponential(2)} • Supply: 100B`}
+      title={`FDV (Fully Diluted Value)\nPrice: $${price.toExponential(4)}\nSupply: 100B tokens`}
     >
       <span className="text-cyan-400 font-medium">$BEAMR</span>
+      <span className="text-slate-500 text-[10px]">FDV</span>
       <span className={`font-mono font-semibold tabular-nums ${colorClass}`}>
         {formatMarketCap(marketCap)}
       </span>
