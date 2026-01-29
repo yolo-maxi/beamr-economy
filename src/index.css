@@ -176,6 +176,24 @@ body {
   }
 }
 
+/* Navigation Panel glow animation */
+@keyframes panel-glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 10px rgba(34, 211, 238, 0.15),
+      0 0 20px rgba(34, 211, 238, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 15px rgba(34, 211, 238, 0.25),
+      0 0 30px rgba(34, 211, 238, 0.15);
+  }
+}
+
+.animate-panel-glow {
+  animation: panel-glow 3s ease-in-out infinite;
+}
+
 /* React Flow Controls - Dark Theme Styling */
 .react-flow__controls {
   background: rgba(15, 23, 42, 0.95) !important; /* bg-slate-950 */

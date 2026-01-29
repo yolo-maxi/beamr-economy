@@ -982,7 +982,7 @@ function NavigationPanel({
 
       {/* User List Section - header at bottom, content grows upward */}
       {users.length > 0 && (
-        <div className="flex max-h-[350px] flex-col-reverse rounded border border-slate-700/80 bg-slate-900/95 shadow-md">
+        <div className="flex max-h-[350px] flex-col-reverse rounded border border-cyan-500/30 bg-slate-900/95 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-400/20 animate-panel-glow">
           {/* Header - at bottom, always visible */}
           <button
             type="button"
