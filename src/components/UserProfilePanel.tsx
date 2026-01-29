@@ -130,7 +130,7 @@ export default function UserProfilePanel({
             </h3>
             {userData.farcaster && (
               <a
-                href={`https://warpcast.com/${userData.farcaster}`}
+                href={`https://farcaster.xyz/${userData.farcaster}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-purple-400 hover:text-purple-300 text-xs flex items-center gap-1"
