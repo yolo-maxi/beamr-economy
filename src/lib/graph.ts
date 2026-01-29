@@ -267,7 +267,7 @@ export async function buildGraphElements(
           },
           data: {
             flowRate: memberFlowRate.toString(),
-            units: memberUnits,
+            units: units.toString(),
           },
         } as Edge);
         
