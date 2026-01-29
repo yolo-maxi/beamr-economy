@@ -265,6 +265,10 @@ export async function buildGraphElements(
             stroke: "#38bdf8",
             strokeDasharray: canComputeFlows ? undefined : "6 4",
           },
+          data: {
+            flowRate: memberFlowRate.toString(),
+            units: memberUnits,
+          },
         } as Edge);
         
         // Track flow stats for both parties
