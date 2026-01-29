@@ -237,3 +237,21 @@ body {
   fill: currentColor !important;
 }
 
+/* Custom animated edge styling - wider dashes, slower movement */
+@keyframes edge-flow {
+  from {
+    stroke-dashoffset: 30;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__edge-path {
+  stroke-dasharray: 10 5 !important; /* Wider dashes: 10px dash, 5px gap */
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  animation: edge-flow 2s linear infinite !important; /* Slower: 2s instead of default */
+}
+
