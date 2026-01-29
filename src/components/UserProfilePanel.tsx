@@ -42,14 +42,16 @@ type UserProfilePanelProps = {
   onClose: () => void;
 };
 
+const MAX_VISIBLE_STREAMS = 5; // Show top 5 by default
+
 export default function UserProfilePanel({
   selectedNodeId,
   nodes,
   edges,
   onClose,
 }: UserProfilePanelProps) {
-  const [showIncoming, setShowIncoming] = useState(true);
-  const [showOutgoing, setShowOutgoing] = useState(true);
+  const [showIncoming, setShowIncoming] = useState(false); // Collapsed by default
+  const [showOutgoing, setShowOutgoing] = useState(false); // Collapsed by default
 
   if (!selectedNodeId) return null;
 
@@ -184,7 +186,7 @@ export default function UserProfilePanel({
 
       {/* Streams List */}
       <div className="overflow-y-auto max-h-[calc(100vh-16rem)]">
-        {/* Incoming Streams */}
+        {/* Incoming Streams - Top Contributors */}
         {incomingStreams.length > 0 && (
           <div className="border-b border-slate-700/50">
             <button
@@ -192,7 +194,7 @@ export default function UserProfilePanel({
               className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-800/50"
             >
               <span className="text-xs font-medium text-emerald-400">
-                ↓ Incoming Streams ({incomingStreams.length})
+                ↓ Top Contributors ({incomingStreams.length})
               </span>
               <svg
                 className={`h-3 w-3 text-slate-400 transition-transform ${showIncoming ? "rotate-180" : ""}`}
@@ -204,8 +206,16 @@ export default function UserProfilePanel({
               </svg>
             </button>
             {showIncoming && (
-              <div className="px-2 pb-2">
-                {incomingStreams.map((stream) => (
+              <div className="max-h-40 overflow-y-auto px-2 pb-2">
+                {incomingStreams.slice(0, MAX_VISIBLE_STREAMS).map((stream) => (
+                  <StreamRow key={stream.userId} stream={stream} type="incoming" />
+                ))}
+                {incomingStreams.length > MAX_VISIBLE_STREAMS && (
+                  <div className="text-center text-[10px] text-slate-500 py-1">
+                    +{incomingStreams.length - MAX_VISIBLE_STREAMS} more (scroll)
+                  </div>
+                )}
+                {incomingStreams.slice(MAX_VISIBLE_STREAMS).map((stream) => (
                   <StreamRow key={stream.userId} stream={stream} type="incoming" />
                 ))}
               </div>
@@ -213,7 +223,7 @@ export default function UserProfilePanel({
           </div>
         )}
 
-        {/* Outgoing Streams */}
+        {/* Outgoing Streams - Top Recipients */}
         {outgoingStreams.length > 0 && (
           <div>
             <button
@@ -221,7 +231,7 @@ export default function UserProfilePanel({
               className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-800/50"
             >
               <span className="text-xs font-medium text-red-400">
-                ↑ Outgoing Streams ({outgoingStreams.length})
+                ↑ Top Recipients ({outgoingStreams.length})
               </span>
               <svg
                 className={`h-3 w-3 text-slate-400 transition-transform ${showOutgoing ? "rotate-180" : ""}`}
@@ -233,8 +243,16 @@ export default function UserProfilePanel({
               </svg>
             </button>
             {showOutgoing && (
-              <div className="px-2 pb-2">
-                {outgoingStreams.map((stream) => (
+              <div className="max-h-40 overflow-y-auto px-2 pb-2">
+                {outgoingStreams.slice(0, MAX_VISIBLE_STREAMS).map((stream) => (
+                  <StreamRow key={stream.userId} stream={stream} type="outgoing" />
+                ))}
+                {outgoingStreams.length > MAX_VISIBLE_STREAMS && (
+                  <div className="text-center text-[10px] text-slate-500 py-1">
+                    +{outgoingStreams.length - MAX_VISIBLE_STREAMS} more (scroll)
+                  </div>
+                )}
+                {outgoingStreams.slice(MAX_VISIBLE_STREAMS).map((stream) => (
                   <StreamRow key={stream.userId} stream={stream} type="outgoing" />
                 ))}
               </div>
@@ -254,7 +272,7 @@ export default function UserProfilePanel({
 
 function StreamRow({ stream, type }: { stream: StreamInfo; type: "incoming" | "outgoing" }) {
   const colorClass = type === "incoming" ? "text-emerald-400" : "text-red-400";
-  const bgClass = type === "incoming" ? "bg-emerald-500/10" : "bg-red-500/10";
+  const bgClass = type === "incoming" ? "bg-emerald-500/20" : "bg-red-500/20";
 
   return (
     <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-800/50">
@@ -274,16 +292,12 @@ function StreamRow({ stream, type }: { stream: StreamInfo; type: "incoming" | "o
       <div className="min-w-0 flex-1">
         <div className="truncate text-[11px] text-slate-300">{stream.label}</div>
       </div>
-      <div className="text-right">
-        <div className={`text-[10px] font-medium ${colorClass}`}>
-          {formatCompactFlowRate(stream.flowRate)}/day
+      {/* Show % prominently */}
+      {stream.weight !== undefined && stream.weight > 0 && (
+        <div className={`rounded-md px-2 py-0.5 text-xs font-semibold ${bgClass} ${colorClass}`}>
+          {stream.weight.toFixed(1)}%
         </div>
-        {stream.weight !== undefined && stream.weight > 0 && (
-          <div className={`text-[9px] rounded px-1 ${bgClass} ${colorClass}`}>
-            {stream.weight.toFixed(1)}%
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
