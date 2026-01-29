@@ -125,3 +125,97 @@ body {
   pointer-events: auto !important;
 }
 
+/* Loading skeleton shimmer animation */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.5) 25%,
+    rgba(51, 65, 85, 0.5) 50%,
+    rgba(30, 41, 59, 0.5) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .pointer-events-none.fixed.left-6.top-6 {
+    left: 1rem !important;
+    top: 1rem !important;
+  }
+  
+  .pointer-events-none.fixed.left-6.top-6 h1 {
+    font-size: 1.25rem !important;
+  }
+  
+  .pointer-events-none.fixed.left-6.top-6 img {
+    height: 2.5rem !important;
+    width: 2.5rem !important;
+  }
+}
+
+/* Touch-friendly controls on mobile */
+@media (max-width: 768px) {
+  .react-flow__controls {
+    transform: scale(1.2);
+    transform-origin: bottom left;
+  }
+  
+  .react-flow__controls button {
+    width: 32px !important;
+    height: 32px !important;
+  }
+}
+
+/* React Flow Controls - Dark Theme Styling */
+.react-flow__controls {
+  background: rgba(15, 23, 42, 0.95) !important; /* bg-slate-950 */
+  border: 1px solid rgba(51, 65, 85, 0.8) !important; /* border-slate-700 */
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+  color: rgb(148, 163, 184) !important; /* text-slate-400 */
+  width: 28px !important;
+  height: 28px !important;
+  padding: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(30, 41, 59, 0.8) !important; /* bg-slate-800 */
+  color: rgb(34, 211, 238) !important; /* text-cyan-400 */
+}
+
+.react-flow__controls-button:active {
+  background: rgba(51, 65, 85, 0.6) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+}
+
+.react-flow__controls-button path {
+  fill: currentColor !important;
+}
+

@@ -67,6 +67,7 @@ export default function FlowGraph() {
   );
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [currentData, setCurrentData] = useState<BeamrData | null>(null);
   const [nodesDraggable, setNodesDraggable] = useState(true);
 
@@ -154,14 +155,14 @@ export default function FlowGraph() {
       }
     };
 
-    // Fetch immediately on config change (but don't show loading)
+    // Fetch immediately on config change or retry (but don't show loading)
     fetchAndMerge();
     const interval = setInterval(fetchAndMerge, POLL_INTERVAL_MS);
     return () => {
       mounted = false;
       clearInterval(interval);
     };
-  }, [config]);
+  }, [config, retryCount]);
 
   useEffect(() => {
     setDraftConfig(config);
@@ -177,7 +178,60 @@ export default function FlowGraph() {
     setConfig(cleaned);
   };
 
+  const handleRetry = () => {
+    setError(null);
+    setRetryCount((c) => c + 1);
+  };
+
   const showEmptyState = !isInitialLoad && !error && nodes.length === 0;
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape to deselect
+      if (e.key === "Escape") {
+        setSelectedNodeId(null);
+        return;
+      }
+
+      // Arrow key navigation through users
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        
+        // Get sorted user list (same as NavigationPanel)
+        const userIds = nodes
+          .filter((n) => n.type === "user")
+          .filter((n) => {
+            const data = n.data as { incomingFlows?: { userCount: number }; outgoingFlows?: { userCount: number } };
+            const hasIncoming = data.incomingFlows && data.incomingFlows.userCount > 0;
+            const hasOutgoing = data.outgoingFlows && data.outgoingFlows.userCount > 0;
+            return hasIncoming || hasOutgoing;
+          })
+          .map((n) => n.id);
+
+        if (userIds.length === 0) return;
+
+        const currentIndex = selectedNodeId ? userIds.indexOf(selectedNodeId) : -1;
+        let newIndex: number;
+
+        if (e.key === "ArrowDown") {
+          newIndex = currentIndex < userIds.length - 1 ? currentIndex + 1 : 0;
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : userIds.length - 1;
+        }
+
+        setSelectedNodeId(userIds[newIndex]);
+        
+        // Fit view when navigating
+        if (reactFlowInstance) {
+          reactFlowInstance.fitView({ duration: 300 });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nodes, selectedNodeId, reactFlowInstance]);
 
   // Compute sorted users list by total outgoing flowrate
   const sortedUsers = useMemo(() => {
@@ -371,12 +425,27 @@ export default function FlowGraph() {
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center px-8 text-center text-slate-300">
-        <div className="max-w-2xl space-y-4 rounded-lg border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Unable to load Superfluid data
-          </h2>
+      <div className="flex h-full items-center justify-center px-4 sm:px-8 text-center text-slate-300">
+        <div className="max-w-2xl space-y-4 rounded-lg border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
+          <div className="flex items-center justify-center gap-3 text-red-400">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Unable to load Superfluid data
+            </h2>
+          </div>
           <p className="text-sm">{error}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-cyan-400 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Retry
+          </button>
           <p className="text-xs text-slate-400">
             Set <span className="font-mono">VITE_SUPERFLUID_SUBGRAPH_URL</span> in
             your environment to point at the Superfluid subgraph for the BEAMR
@@ -412,8 +481,31 @@ export default function FlowGraph() {
         </div>
       )}
       {isInitialLoad && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/70 text-sm text-slate-200">
-          Loading BEAMR streams and pools...
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/90">
+          <div className="flex flex-col items-center gap-6">
+            {/* Skeleton cards */}
+            <div className="flex items-center gap-8">
+              <div className="skeleton h-24 w-64 rounded-2xl" />
+              <div className="skeleton h-24 w-64 rounded-2xl" />
+            </div>
+            <div className="flex items-center gap-12">
+              <div className="skeleton h-16 w-44 rounded-xl" />
+              <div className="skeleton h-16 w-44 rounded-xl" />
+              <div className="skeleton h-16 w-44 rounded-xl" />
+            </div>
+            <div className="flex items-center gap-8">
+              <div className="skeleton h-16 w-44 rounded-xl" />
+              <div className="skeleton h-16 w-44 rounded-xl" />
+            </div>
+            {/* Loading text */}
+            <div className="mt-4 flex items-center gap-3 text-sm text-slate-400">
+              <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Loading BEAMR streams and pools...
+            </div>
+          </div>
         </div>
       )}
       <ReactFlow
