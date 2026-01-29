@@ -1,5 +1,8 @@
-const AGENTATION_API = "https://agentation.repo.box";
+export const AGENTATION_API = "https://agentation.repo.box";
 const STORAGE_KEY = "agentation_edit_token";
+
+type AnnotationInput = Record<string, unknown> & { id: string };
+type SendResult = { id: string; remoteId: string; success: boolean; error?: string };
 
 // Check URL for edit token and save to localStorage
 export function checkAndSaveEditToken(): string | null {
@@ -30,8 +33,8 @@ export async function validateToken(token: string): Promise<{ valid: boolean; pr
   }
 }
 
-// Submit annotation to backend
-export async function submitAnnotation(token: string, annotation: Record<string, unknown>): Promise<{ success: boolean; id?: string; error?: string }> {
+// Submit single annotation to backend
+export async function submitAnnotation(token: string, annotation: AnnotationInput): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const res = await fetch(`${AGENTATION_API}/api/annotations`, {
       method: "POST",
@@ -48,6 +51,43 @@ export async function submitAnnotation(token: string, annotation: Record<string,
   } catch (err) {
     return { success: false, error: String(err) };
   }
+}
+
+// Submit batch of annotations to backend (API mode)
+export async function submitAnnotations(token: string, annotations: AnnotationInput[]): Promise<SendResult[]> {
+  const results: SendResult[] = [];
+  
+  for (const annotation of annotations) {
+    try {
+      const res = await fetch(`${AGENTATION_API}/api/annotations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          editToken: token,
+          annotation: {
+            ...annotation,
+            pageUrl: window.location.href,
+          },
+        }),
+      });
+      const data = await res.json();
+      results.push({
+        id: annotation.id,
+        remoteId: data.id || '',
+        success: data.success,
+        error: data.error,
+      });
+    } catch (err) {
+      results.push({
+        id: annotation.id,
+        remoteId: '',
+        success: false,
+        error: String(err),
+      });
+    }
+  }
+  
+  return results;
 }
 
 // Clear stored token

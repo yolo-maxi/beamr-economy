@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import FlowGraph from "./components/FlowGraph";
 import PriceIndicator from "./components/PriceIndicator";
 import { fetchUserByUsername } from "./lib/farcaster";
 import { Agentation, type Annotation } from "agentation";
-import { checkAndSaveEditToken, validateToken, submitAnnotation } from "./lib/agentation";
+import { checkAndSaveEditToken, validateToken, submitAnnotations, AGENTATION_API } from "./lib/agentation";
 
 export default function App() {
   const [beamrLogo, setBeamrLogo] = useState<string | null>(null);
@@ -31,16 +31,19 @@ export default function App() {
     });
   }, []);
 
-  // Handle annotation submission
-  const handleAnnotation = async (annotation: Annotation) => {
-    if (!editToken) return;
-    const result = await submitAnnotation(editToken, annotation);
-    if (result.success) {
-      console.log("[Agentation] Submitted:", result.id);
-    } else {
-      console.error("[Agentation] Failed:", result.error);
-    }
-  };
+  // Handle batch annotation submission (API mode)
+  const handleSend = useCallback(async (annotations: Annotation[]) => {
+    if (!editToken) return [];
+    const results = await submitAnnotations(editToken, annotations);
+    results.forEach(r => {
+      if (r.success) {
+        console.log("[Agentation] Submitted:", r.remoteId);
+      } else {
+        console.error("[Agentation] Failed:", r.id, r.error);
+      }
+    });
+    return results;
+  }, [editToken]);
 
   return (
     <div className="relative h-full w-full">
@@ -73,7 +76,15 @@ export default function App() {
           </div>
         </div>
       </div>
-      {isEditMode && <Agentation onAnnotationAdd={handleAnnotation} />}
+      {isEditMode && (
+        <Agentation
+          apiMode
+          apiEndpoint={AGENTATION_API}
+          editToken={editToken || undefined}
+          onSend={handleSend}
+          pollInterval={20000}
+        />
+      )}
     </div>
   );
 }
