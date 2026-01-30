@@ -14,6 +14,9 @@ importers:
       agentation:
         specifier: link:../agentation/_package-export
         version: link:../agentation/_package-export
+      agentation-flow:
+        specifier: link:../agentation/_package-export
+        version: link:../agentation/_package-export
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0

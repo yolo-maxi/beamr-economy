@@ -23,7 +23,7 @@ import {
   saveBeamrConfig,
 } from "../lib/superfluid";
 import { preloadImage } from "../lib/imageCache";
-import { shortenAddress, formatCompactFlowRate, saveNodePositions } from "../lib/utils";
+import { shortenAddress, formatCompactFlowRate, formatTokenBalance, saveNodePositions } from "../lib/utils";
 import {
   loadCachedBeamrData,
   saveBeamrData,
@@ -617,8 +617,37 @@ type UserNodeProps = {
     distributedPools?: PoolInfo[];
     incomingFlows?: FlowStats;
     outgoingFlows?: FlowStats;
+    balance?: string;
   };
 };
+
+/** Net flow direction arrow: green ↑ for positive (inflows > outflows), red ↓ for negative */
+function NetFlowArrow({ incoming, outgoing }: {
+  incoming?: FlowStats;
+  outgoing?: FlowStats;
+}) {
+  const inRate = incoming?.totalFlowRate ?? 0n;
+  const outRate = outgoing?.totalFlowRate ?? 0n;
+  
+  if (inRate === 0n && outRate === 0n) return null;
+  
+  const netFlow = inRate - outRate;
+  
+  if (netFlow > 0n) {
+    // Positive: more incoming than outgoing (gaining)
+    return (
+      <span className="text-emerald-400 text-sm font-bold" title="Net positive flow (gaining BEAMR)">↑</span>
+    );
+  } else if (netFlow < 0n) {
+    // Negative: more outgoing than incoming (losing)
+    return (
+      <span className="text-red-400 text-sm font-bold" title="Net negative flow (losing BEAMR)">↓</span>
+    );
+  }
+  
+  // Zero net flow
+  return null;
+}
 
 /** Compact flow stats display with colored arrows: #users <arrow> $flowrate */
 function FlowStatsDisplay({ incoming, outgoing, compact = false }: {
@@ -832,6 +861,14 @@ function UserNode({ data }: UserNodeProps) {
             </div>
           </div>
         </div>
+        {/* BEAMR Balance */}
+        {data.balance && formatTokenBalance(data.balance) && (
+          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-300">
+            <span className="font-semibold">Balance: </span>
+            <span className="font-bold text-sky-300">{formatTokenBalance(data.balance)} BEAMR</span>
+            <NetFlowArrow incoming={data.incomingFlows} outgoing={data.outgoingFlows} />
+          </div>
+        )}
         {/* Compact flow stats */}
         <div className="mt-3 flex items-center justify-center rounded-lg bg-slate-800/60 px-3 py-2">
           <FlowStatsDisplay incoming={data.incomingFlows} outgoing={data.outgoingFlows} />
@@ -900,6 +937,12 @@ function UserNode({ data }: UserNodeProps) {
               <FlowStatsDisplay incoming={data.incomingFlows} outgoing={data.outgoingFlows} compact />
             )}
           </div>
+          {data.balance && formatTokenBalance(data.balance) && (
+            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400">
+              <span>{formatTokenBalance(data.balance)} BEAMR</span>
+              <NetFlowArrow incoming={data.incomingFlows} outgoing={data.outgoingFlows} />
+            </div>
+          )}
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} />

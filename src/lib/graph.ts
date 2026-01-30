@@ -40,6 +40,8 @@ type UserNodeData = {
   incomingFlows?: FlowStats;
   /** Aggregated outgoing flow stats (sending to others) */
   outgoingFlows?: FlowStats;
+  /** BEAMR token balance */
+  balance?: string;
 };
 
 const DEFAULT_DECIMALS = 18;
@@ -142,11 +144,14 @@ export async function buildGraphElements(
   // Track flow stats per user (we'll aggregate after creating edges)
   const incomingFlowsByUser = new Map<string, { totalFlowRate: bigint; senders: Set<string> }>();
   const outgoingFlowsByUser = new Map<string, { totalFlowRate: bigint; receivers: Set<string> }>();
-  
+
+  // Track balances per user
+  const balanceByUser = new Map<string, string>();
+
   // Track edges between node pairs to assign different curvatures
   const edgeCountByPair = new Map<string, number>();
 
-  // First pass: compute pool info and associate with distributors
+  // First pass: compute pool info and associate with distributors, collect balances
   for (const pool of data.pools) {
     const poolAddress = normalizeAddress(pool.id);
     const perUnitFlowRate = computePerUnitFlowRate(pool);
@@ -171,12 +176,25 @@ export async function buildGraphElements(
       memberCount,
     };
 
-    // Associate pool info with each distributor
+    // Associate pool info with each distributor and collect balances
     for (const distributor of pool.poolDistributors ?? []) {
       const distributorAddress = normalizeAddress(distributor.account.id);
       const existing = poolInfoByDistributor.get(distributorAddress) ?? [];
       existing.push(poolInfo);
       poolInfoByDistributor.set(distributorAddress, existing);
+
+      // Store distributor balance
+      if (distributor.account.balance) {
+        balanceByUser.set(distributorAddress, distributor.account.balance);
+      }
+    }
+
+    // Collect balances from pool members
+    for (const member of pool.poolMembers ?? []) {
+      const memberAddress = normalizeAddress(member.account.id);
+      if (member.account.balance) {
+        balanceByUser.set(memberAddress, member.account.balance);
+      }
     }
   }
 
@@ -185,6 +203,7 @@ export async function buildGraphElements(
     const nodeId = makeAccountNodeId(normalized);
     if (nodeIdSet.has(nodeId)) return;
     const distributedPools = poolInfoByDistributor.get(normalized);
+    const balance = balanceByUser.get(normalized);
     nodes.push({
       id: nodeId,
       type: "user",
@@ -193,6 +212,7 @@ export async function buildGraphElements(
         label: shortenAddress(normalized),
         kind: "user",
         distributedPools,
+        balance,
       } satisfies UserNodeData,
       position: { x: 0, y: 0 },
     });

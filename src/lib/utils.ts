@@ -84,6 +84,31 @@ export function flowRateToStrokeWidth(flowRate: string) {
   return Math.min(6, 1 + digits / 6);
 }
 
+/**
+ * Format a bigint token balance as a compact number
+ * Returns null if balance is 0 or undefined
+ */
+export function formatTokenBalance(balance?: string, decimals = DEFAULT_DECIMALS): string | null {
+  if (!balance) return null;
+
+  try {
+    const raw = BigInt(balance);
+    if (raw <= 0n) return null;
+
+    const divisor = BigInt(10) ** BigInt(decimals);
+    const whole = raw / divisor;
+    const fraction = raw % divisor;
+
+    // Convert to number for formatting (safe for display purposes)
+    const fractionNum = Number(fraction) / Number(divisor);
+    const totalValue = Number(whole) + fractionNum;
+
+    return formatCompact(totalValue);
+  } catch {
+    return null;
+  }
+}
+
 const NODE_POSITIONS_STORAGE_KEY = "beamr_node_positions";
 
 export type NodePosition = {

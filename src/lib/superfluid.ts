@@ -9,7 +9,7 @@ export type PoolDistribution = {
 
 export type PoolMember = {
   id: string;
-  account: { id: string };
+  account: { id: string; balance?: string };
   units: string;
   isConnected?: boolean;
 };
@@ -17,7 +17,7 @@ export type PoolMember = {
 export type PoolDistributor = {
   id: string;
   flowRate: string;
-  account: { id: string };
+  account: { id: string; balance?: string };
 };
 
 export type Pool = {
@@ -56,6 +56,9 @@ const POOLS_AND_DISTRIBUTIONS_QUERY = `
         flowRate
         account {
           id
+          accountTokenSnapshots(where: { token: $token }) {
+            balanceUntilUpdatedAt
+          }
         }
       }
       poolMembers {
@@ -64,6 +67,9 @@ const POOLS_AND_DISTRIBUTIONS_QUERY = `
         isConnected
         account {
           id
+          accountTokenSnapshots(where: { token: $token }) {
+            balanceUntilUpdatedAt
+          }
         }
       }
     }
@@ -144,6 +150,35 @@ function resolveBeamrConfig(overrides?: Partial<BeamrConfig>): BeamrConfig {
   };
 }
 
+function extractBalance(accountTokenSnapshots?: { balanceUntilUpdatedAt: string }[]): string | undefined {
+  if (!accountTokenSnapshots || accountTokenSnapshots.length === 0) return undefined;
+  return accountTokenSnapshots[0].balanceUntilUpdatedAt;
+}
+
+type GraphQLPoolDistributor = {
+  id: string;
+  flowRate: string;
+  account: {
+    id: string;
+    accountTokenSnapshots?: { balanceUntilUpdatedAt: string }[]
+  };
+};
+
+type GraphQLPoolMember = {
+  id: string;
+  units: string;
+  isConnected?: boolean;
+  account: {
+    id: string;
+    accountTokenSnapshots?: { balanceUntilUpdatedAt: string }[]
+  };
+};
+
+type GraphQLPool = Omit<Pool, 'poolDistributors' | 'poolMembers'> & {
+  poolDistributors?: GraphQLPoolDistributor[];
+  poolMembers: GraphQLPoolMember[];
+};
+
 export async function fetchBeamrData(
   overrides?: Partial<BeamrConfig>
 ): Promise<BeamrData> {
@@ -155,10 +190,33 @@ export async function fetchBeamrData(
   }
 
   const payload = await fetchGraph<{
-    pools: Pool[];
+    pools: GraphQLPool[];
   }>(subgraphUrl, POOLS_AND_DISTRIBUTIONS_QUERY, tokenAddress);
+
+  // Process pools to extract balance from accountTokenSnapshots
+  const pools: Pool[] = payload.pools.map(pool => ({
+    ...pool,
+    poolDistributors: pool.poolDistributors?.map(dist => ({
+      id: dist.id,
+      flowRate: dist.flowRate,
+      account: {
+        id: dist.account.id,
+        balance: extractBalance(dist.account.accountTokenSnapshots)
+      }
+    })),
+    poolMembers: pool.poolMembers.map(member => ({
+      id: member.id,
+      units: member.units,
+      isConnected: member.isConnected,
+      account: {
+        id: member.account.id,
+        balance: extractBalance(member.account.accountTokenSnapshots)
+      }
+    }))
+  }));
+
   return {
-    pools: payload.pools ?? [],
+    pools,
     poolDistributions: [],
   };
 }
