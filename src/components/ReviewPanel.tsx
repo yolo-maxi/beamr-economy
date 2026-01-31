@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchAnnotations,
   approveAnnotation,
@@ -13,6 +14,64 @@ interface ReviewPanelProps {
   editToken: string;
   tokenInfo: TokenValidation;
   onRefresh?: () => void;
+}
+
+// Component that injects button into the agentation toolbar
+function ToolbarButton({ isOpen, onClick, reviewCount, activeCount, isDark }: {
+  isOpen: boolean;
+  onClick: () => void;
+  reviewCount: number;
+  activeCount: number;
+  isDark: boolean;
+}) {
+  const [toolbarControls, setToolbarControls] = useState<Element | null>(null);
+
+  useEffect(() => {
+    // Find the toolbar controls container (the div with the buttons)
+    const findToolbar = () => {
+      // Look for the controls content div inside the toolbar
+      const controls = document.querySelector('[class*="controlsContent"]');
+      if (controls) {
+        setToolbarControls(controls);
+      }
+    };
+
+    findToolbar();
+    // Re-check periodically in case toolbar loads later
+    const interval = setInterval(findToolbar, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const button = (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center justify-center w-[34px] h-[34px] rounded-full transition-all duration-150 ${
+        isDark 
+          ? "bg-transparent hover:bg-white/10 text-white/80 hover:text-white" 
+          : "bg-transparent hover:bg-black/5 text-black/60 hover:text-black/90"
+      } ${isOpen ? "text-purple-500 bg-purple-500/20" : ""}`}
+      title={isOpen ? "Close review panel" : "Open review panel"}
+    >
+      <span className="text-sm">{isOpen ? "✕" : (reviewCount > 0 ? "👀" : "📋")}</span>
+      {activeCount > 0 && !isOpen && (
+        <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white rounded-full bg-purple-500">
+          {activeCount}
+        </span>
+      )}
+    </button>
+  );
+
+  // If we found the toolbar, inject the button into it
+  if (toolbarControls) {
+    return createPortal(button, toolbarControls);
+  }
+
+  // Fallback: render floating button if toolbar not found
+  return (
+    <div className="fixed bottom-5 right-40 z-[100001]">
+      {button}
+    </div>
+  );
 }
 
 // Map statuses to display config - light mode colors
@@ -299,24 +358,14 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
 
   return (
     <>
-      {/* Button injected into toolbar - positioned to appear as first button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-5 z-[100001] w-[34px] h-[34px] flex items-center justify-center rounded-full transition-all duration-150 ${
-          isDark 
-            ? "bg-transparent hover:bg-white/10 text-white/80 hover:text-white" 
-            : "bg-transparent hover:bg-black/5 text-black/60 hover:text-black/90"
-        } ${isOpen ? "text-purple-500" : ""}`}
-        style={{ right: 'calc(1.25rem + 122px)' }}
-        title={isOpen ? "Close review panel" : "Open review panel"}
-      >
-        <span className="text-base">{isOpen ? "✕" : (reviewCount > 0 ? "👀" : "📋")}</span>
-        {activeCount > 0 && !isOpen && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white rounded-full bg-purple-500">
-            {activeCount}
-          </span>
-        )}
-      </button>
+      {/* Button injected into toolbar via portal */}
+      <ToolbarButton 
+        isOpen={isOpen} 
+        onClick={() => setIsOpen(!isOpen)} 
+        reviewCount={reviewCount}
+        activeCount={activeCount}
+        isDark={isDark}
+      />
 
       {/* Panel - appears above the toolbar */}
       {isOpen && (
