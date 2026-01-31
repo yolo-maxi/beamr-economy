@@ -299,11 +299,27 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
 
   return (
     <>
-      {/* Panel container - button is part of the panel */}
-      <div className="fixed bottom-5 right-4 z-[100003] flex flex-col items-end gap-2">
-        {/* Panel - appears above the button */}
-        {isOpen && (
-          <div className={`w-96 max-h-[60vh] ${panelBg} border ${panelBorder} rounded-xl shadow-2xl backdrop-blur-sm overflow-hidden flex flex-col`}>
+      {/* Button injected into toolbar area - positioned to appear as part of the toolbar */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`fixed bottom-5 right-[calc(1.25rem+260px)] z-[100001] w-[34px] h-[34px] flex items-center justify-center rounded-full transition-all duration-150 ${
+          isDark 
+            ? "bg-transparent hover:bg-white/10 text-white/80 hover:text-white" 
+            : "bg-transparent hover:bg-black/5 text-black/60 hover:text-black/90"
+        } ${isOpen ? "text-purple-500" : ""}`}
+        title={isOpen ? "Close review panel" : "Open review panel"}
+      >
+        <span className="text-base">{isOpen ? "✕" : (reviewCount > 0 ? "👀" : "📋")}</span>
+        {activeCount > 0 && !isOpen && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white rounded-full bg-purple-500">
+            {activeCount}
+          </span>
+        )}
+      </button>
+
+      {/* Panel - appears above the toolbar */}
+      {isOpen && (
+        <div className={`fixed bottom-16 right-5 z-[100003] w-96 max-h-[60vh] ${panelBg} border ${panelBorder} rounded-xl shadow-2xl backdrop-blur-sm overflow-hidden flex flex-col`}>
           {/* Header */}
           <div className={`p-4 border-b ${headerBorder}`}>
             <div className="flex items-center justify-between mb-3">
@@ -491,40 +507,7 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
             </p>
           </div>
         </div>
-        )}
-
-        {/* Toggle button - attached to panel */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`group flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 ease-out ${
-            isDark 
-              ? "bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600" 
-              : "bg-white/90 hover:bg-gray-50/90 border border-gray-200"
-          } ${isOpen 
-            ? "w-full rounded-xl px-4 py-2.5 gap-2" 
-            : "w-11 h-11 rounded-full hover:w-auto hover:px-4 hover:py-2 hover:rounded-xl hover:gap-2"
-          }`}
-        >
-          {/* Icon - always visible when collapsed */}
-          <span className={`text-base ${isOpen ? "hidden" : "group-hover:hidden"}`}>
-            {reviewCount > 0 ? "👀" : "📋"}
-          </span>
-          {/* Label */}
-          <span className={`text-sm font-medium whitespace-nowrap ${isDark ? "text-white" : "text-gray-900"} ${
-            isOpen ? "" : "hidden group-hover:inline"
-          }`}>
-            {isOpen ? "Close" : "Review"}
-          </span>
-          {/* Badge */}
-          {activeCount > 0 && !isOpen && (
-            <span className={`flex items-center justify-center min-w-5 h-5 px-1 text-xs font-bold text-white rounded-full ${
-              reviewCount > 0 ? 'bg-purple-500' : isDark ? 'bg-slate-600' : 'bg-gray-400'
-            } ${isOpen ? "" : "absolute -top-1 -right-1 group-hover:relative group-hover:top-0 group-hover:right-0"}`}>
-              {activeCount}
-            </span>
-          )}
-        </button>
-      </div>
+      )}
 
       {/* Revision modal */}
       {revisionTarget && (
