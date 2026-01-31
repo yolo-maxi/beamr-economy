@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "agentation": "^1.3.2",
-    "agentation-flow": "link:../agentation/_package-export",
+    "agentation": "file:../agentation/_package-export",
+    "agentation-flow": "file:../agentation/_package-export",
     "d3-force": "^3.0.0",
     "dagre": "^0.8.5",
     "react": "^18.2.0",

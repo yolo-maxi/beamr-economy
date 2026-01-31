@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { fetchAnnotations, type AnnotationSummary } from "../lib/agentation";
+import { fetchAnnotations, type AnnotationSummary } from "agentation";
 
 interface UpdateNotificationProps {
   editToken: string;

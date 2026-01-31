@@ -1,17 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import FlowGraph from "./components/FlowGraph";
 import PriceIndicator from "./components/PriceIndicator";
-import ReviewPanel from "./components/ReviewPanel";
 import UpdateNotification from "./components/UpdateNotification";
 import { fetchUserByUsername } from "./lib/farcaster";
-import { Agentation, type Annotation } from "agentation";
 import { 
+  Agentation, 
+  ReviewPanel,
+  type Annotation,
+  type TokenValidation,
   checkAndSaveEditToken, 
   validateToken, 
   submitAnnotations, 
   AGENTATION_API,
-  type TokenValidation,
-} from "./lib/agentation";
+} from "agentation";
 
 export default function App() {
   const [beamrLogo, setBeamrLogo] = useState<string | null>(null);
@@ -96,21 +97,20 @@ export default function App() {
           />
           
           {tokenInfo && (
-            <ReviewPanel
+            <Agentation
+              apiMode
+              apiEndpoint={AGENTATION_API}
               editToken={editToken}
-              tokenInfo={tokenInfo}
-              renderToolbarButton={(button) => (
-                <Agentation
-                  apiMode
-                  apiEndpoint={AGENTATION_API}
+              onSend={handleSend}
+              pollInterval={20000}
+              multiplayerMode
+              defaultMultiplayer
+              customButtons={
+                <ReviewPanel
                   editToken={editToken}
-                  onSend={handleSend}
-                  pollInterval={20000}
-                  multiplayerMode
-                  defaultMultiplayer
-                  customButtons={button}
+                  tokenInfo={tokenInfo}
                 />
-              )}
+              }
             />
           )}
         </>
