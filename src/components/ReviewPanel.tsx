@@ -299,14 +299,15 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
 
   return (
     <>
-      {/* Button injected into toolbar area - positioned to appear as part of the toolbar */}
+      {/* Button injected into toolbar - positioned to appear as first button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-5 right-[calc(1.25rem+260px)] z-[100001] w-[34px] h-[34px] flex items-center justify-center rounded-full transition-all duration-150 ${
+        className={`fixed bottom-5 z-[100001] w-[34px] h-[34px] flex items-center justify-center rounded-full transition-all duration-150 ${
           isDark 
             ? "bg-transparent hover:bg-white/10 text-white/80 hover:text-white" 
             : "bg-transparent hover:bg-black/5 text-black/60 hover:text-black/90"
         } ${isOpen ? "text-purple-500" : ""}`}
+        style={{ right: 'calc(1.25rem + 122px)' }}
         title={isOpen ? "Close review panel" : "Open review panel"}
       >
         <span className="text-base">{isOpen ? "✕" : (reviewCount > 0 ? "👀" : "📋")}</span>
