@@ -302,7 +302,7 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
       {/* Toggle button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-20 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all ${
+        className={`fixed bottom-20 right-4 z-[100003] flex items-center gap-2 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all ${
           isDark 
             ? "bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600" 
             : "bg-white/90 hover:bg-gray-50/90 border border-gray-200"
@@ -322,7 +322,7 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
 
       {/* Panel */}
       {isOpen && (
-        <div className={`fixed bottom-32 right-4 z-50 w-96 max-h-[70vh] ${panelBg} border ${panelBorder} rounded-xl shadow-2xl backdrop-blur-sm overflow-hidden flex flex-col`}>
+        <div className={`fixed bottom-32 right-4 z-[100003] w-96 max-h-[70vh] ${panelBg} border ${panelBorder} rounded-xl shadow-2xl backdrop-blur-sm overflow-hidden flex flex-col`}>
           {/* Header */}
           <div className={`p-4 border-b ${headerBorder}`}>
             <div className="flex items-center justify-between mb-3">
