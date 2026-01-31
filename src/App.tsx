@@ -95,20 +95,22 @@ export default function App() {
             pollInterval={5000}
           />
           
-          <Agentation
-            apiMode
-            apiEndpoint={AGENTATION_API}
-            editToken={editToken}
-            onSend={handleSend}
-            pollInterval={20000}
-            multiplayerMode
-            defaultMultiplayer
-          />
-          
           {tokenInfo && (
             <ReviewPanel
               editToken={editToken}
               tokenInfo={tokenInfo}
+              renderToolbarButton={(button) => (
+                <Agentation
+                  apiMode
+                  apiEndpoint={AGENTATION_API}
+                  editToken={editToken}
+                  onSend={handleSend}
+                  pollInterval={20000}
+                  multiplayerMode
+                  defaultMultiplayer
+                  customButtons={button}
+                />
+              )}
             />
           )}
         </>
