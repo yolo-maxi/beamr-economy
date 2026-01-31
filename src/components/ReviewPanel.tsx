@@ -299,22 +299,33 @@ export default function ReviewPanel({ editToken, tokenInfo, onRefresh }: ReviewP
 
   return (
     <>
-      {/* Toggle button */}
+      {/* Toggle button - expands on hover like toolbar */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-20 right-4 z-[100003] flex items-center gap-2 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all ${
+        className={`group fixed bottom-20 right-4 z-[100003] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 ease-out ${
           isDark 
             ? "bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600" 
             : "bg-white/90 hover:bg-gray-50/90 border border-gray-200"
+        } ${isOpen 
+          ? "rounded-full px-4 py-2 gap-2" 
+          : "w-11 h-11 rounded-full hover:w-auto hover:px-4 hover:py-2 hover:gap-2"
         }`}
       >
-        <span className={`text-sm font-medium ${isDark ? "text-white" : "text-gray-900"}`}>
+        {/* Icon - always visible when collapsed */}
+        <span className={`text-base ${isOpen ? "hidden" : "group-hover:hidden"}`}>
+          {reviewCount > 0 ? "👀" : "📋"}
+        </span>
+        {/* Label - visible when open or on hover */}
+        <span className={`text-sm font-medium whitespace-nowrap ${isDark ? "text-white" : "text-gray-900"} ${
+          isOpen ? "" : "hidden group-hover:inline"
+        }`}>
           {isOpen ? "Close" : "Review"}
         </span>
+        {/* Badge */}
         {activeCount > 0 && (
           <span className={`flex items-center justify-center min-w-5 h-5 px-1 text-xs font-bold text-white rounded-full ${
             reviewCount > 0 ? 'bg-purple-500' : isDark ? 'bg-slate-600' : 'bg-gray-400'
-          }`}>
+          } ${isOpen ? "" : "absolute -top-1 -right-1 group-hover:relative group-hover:top-0 group-hover:right-0"}`}>
             {activeCount}
           </span>
         )}
