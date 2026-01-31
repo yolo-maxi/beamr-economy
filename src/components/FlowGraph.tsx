@@ -23,7 +23,7 @@ import {
   saveBeamrConfig,
 } from "../lib/superfluid";
 import { preloadImage } from "../lib/imageCache";
-import { shortenAddress, formatCompactFlowRate, formatTokenBalance, saveNodePositions } from "../lib/utils";
+import { shortenAddress, formatCompactFlowRate, formatTokenBalance, saveNodePositions, formatLastActivity } from "../lib/utils";
 import {
   loadCachedBeamrData,
   saveBeamrData,
@@ -618,6 +618,7 @@ type UserNodeProps = {
     incomingFlows?: FlowStats;
     outgoingFlows?: FlowStats;
     balance?: string;
+    updatedAtTimestamp?: string;
   };
 };
 
@@ -859,6 +860,11 @@ function UserNode({ data }: UserNodeProps) {
             <div className="text-[11px] text-sky-200/70">
               {shortenAddress(data.address)}
             </div>
+            {data.updatedAtTimestamp && formatLastActivity(data.updatedAtTimestamp) && (
+              <div className="text-[10px] text-slate-400">
+                {formatLastActivity(data.updatedAtTimestamp)}
+              </div>
+            )}
           </div>
         </div>
         {/* BEAMR Balance */}
@@ -941,6 +947,11 @@ function UserNode({ data }: UserNodeProps) {
             <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400">
               <span>{formatTokenBalance(data.balance)} BEAMR</span>
               <NetFlowArrow incoming={data.incomingFlows} outgoing={data.outgoingFlows} />
+            </div>
+          )}
+          {data.updatedAtTimestamp && formatLastActivity(data.updatedAtTimestamp) && (
+            <div className="mt-0.5 text-[9px] text-slate-500">
+              {formatLastActivity(data.updatedAtTimestamp)}
             </div>
           )}
         </div>

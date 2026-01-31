@@ -170,3 +170,55 @@ export function generateRandomPosition(): NodePosition {
   };
 }
 
+/**
+ * Format timestamp as "last activity X ago"
+ * @param timestamp Unix timestamp in seconds (as string or number)
+ * @returns Formatted string like "8hrs ago" or "2d ago"
+ */
+export function formatLastActivity(timestamp?: string | number): string | null {
+  if (!timestamp) return null;
+
+  try {
+    const timestampSeconds = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
+    if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) return null;
+
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
+    const diffSeconds = now - timestampSeconds;
+
+    if (diffSeconds < 0) return null; // Future timestamp, invalid
+
+    // Less than 1 minute
+    if (diffSeconds < 60) return "just now";
+
+    // Less than 1 hour
+    if (diffSeconds < 3600) {
+      const minutes = Math.floor(diffSeconds / 60);
+      return `${minutes}min ago`;
+    }
+
+    // Less than 1 day
+    if (diffSeconds < 86400) {
+      const hours = Math.floor(diffSeconds / 3600);
+      return `${hours}hr${hours === 1 ? "" : "s"} ago`;
+    }
+
+    // Less than 30 days
+    if (diffSeconds < 2592000) {
+      const days = Math.floor(diffSeconds / 86400);
+      return `${days}d ago`;
+    }
+
+    // More than 30 days
+    const months = Math.floor(diffSeconds / 2592000);
+    if (months < 12) {
+      return `${months}mo ago`;
+    }
+
+    // More than 1 year
+    const years = Math.floor(diffSeconds / 31536000);
+    return `${years}y ago`;
+  } catch {
+    return null;
+  }
+}
+

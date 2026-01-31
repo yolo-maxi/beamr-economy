@@ -9,7 +9,7 @@ export type PoolDistribution = {
 
 export type PoolMember = {
   id: string;
-  account: { id: string; balance?: string };
+  account: { id: string; balance?: string; updatedAtTimestamp?: string };
   units: string;
   isConnected?: boolean;
 };
@@ -17,7 +17,7 @@ export type PoolMember = {
 export type PoolDistributor = {
   id: string;
   flowRate: string;
-  account: { id: string; balance?: string };
+  account: { id: string; balance?: string; updatedAtTimestamp?: string };
 };
 
 export type Pool = {
@@ -56,6 +56,7 @@ const POOLS_AND_DISTRIBUTIONS_QUERY = `
         flowRate
         account {
           id
+          updatedAtTimestamp
           accountTokenSnapshots(where: { token: $token }) {
             balanceUntilUpdatedAt
           }
@@ -67,6 +68,7 @@ const POOLS_AND_DISTRIBUTIONS_QUERY = `
         isConnected
         account {
           id
+          updatedAtTimestamp
           accountTokenSnapshots(where: { token: $token }) {
             balanceUntilUpdatedAt
           }
@@ -160,6 +162,7 @@ type GraphQLPoolDistributor = {
   flowRate: string;
   account: {
     id: string;
+    updatedAtTimestamp?: string;
     accountTokenSnapshots?: { balanceUntilUpdatedAt: string }[]
   };
 };
@@ -170,6 +173,7 @@ type GraphQLPoolMember = {
   isConnected?: boolean;
   account: {
     id: string;
+    updatedAtTimestamp?: string;
     accountTokenSnapshots?: { balanceUntilUpdatedAt: string }[]
   };
 };
@@ -201,7 +205,8 @@ export async function fetchBeamrData(
       flowRate: dist.flowRate,
       account: {
         id: dist.account.id,
-        balance: extractBalance(dist.account.accountTokenSnapshots)
+        balance: extractBalance(dist.account.accountTokenSnapshots),
+        updatedAtTimestamp: dist.account.updatedAtTimestamp
       }
     })),
     poolMembers: pool.poolMembers.map(member => ({
@@ -210,7 +215,8 @@ export async function fetchBeamrData(
       isConnected: member.isConnected,
       account: {
         id: member.account.id,
-        balance: extractBalance(member.account.accountTokenSnapshots)
+        balance: extractBalance(member.account.accountTokenSnapshots),
+        updatedAtTimestamp: member.account.updatedAtTimestamp
       }
     }))
   }));

@@ -42,6 +42,8 @@ type UserNodeData = {
   outgoingFlows?: FlowStats;
   /** BEAMR token balance */
   balance?: string;
+  /** Last activity timestamp (from account updatedAtTimestamp) */
+  updatedAtTimestamp?: string;
 };
 
 const DEFAULT_DECIMALS = 18;
@@ -148,6 +150,9 @@ export async function buildGraphElements(
   // Track balances per user
   const balanceByUser = new Map<string, string>();
 
+  // Track last update timestamps per user
+  const updatedAtTimestampByUser = new Map<string, string>();
+
   // Track edges between node pairs to assign different curvatures
   const edgeCountByPair = new Map<string, number>();
 
@@ -187,13 +192,23 @@ export async function buildGraphElements(
       if (distributor.account.balance) {
         balanceByUser.set(distributorAddress, distributor.account.balance);
       }
+
+      // Store distributor updatedAtTimestamp
+      if (distributor.account.updatedAtTimestamp) {
+        updatedAtTimestampByUser.set(distributorAddress, distributor.account.updatedAtTimestamp);
+      }
     }
 
-    // Collect balances from pool members
+    // Collect balances and timestamps from pool members
     for (const member of pool.poolMembers ?? []) {
       const memberAddress = normalizeAddress(member.account.id);
       if (member.account.balance) {
         balanceByUser.set(memberAddress, member.account.balance);
+      }
+
+      // Store member updatedAtTimestamp
+      if (member.account.updatedAtTimestamp) {
+        updatedAtTimestampByUser.set(memberAddress, member.account.updatedAtTimestamp);
       }
     }
   }
@@ -204,6 +219,7 @@ export async function buildGraphElements(
     if (nodeIdSet.has(nodeId)) return;
     const distributedPools = poolInfoByDistributor.get(normalized);
     const balance = balanceByUser.get(normalized);
+    const updatedAtTimestamp = updatedAtTimestampByUser.get(normalized);
     nodes.push({
       id: nodeId,
       type: "user",
@@ -213,6 +229,7 @@ export async function buildGraphElements(
         kind: "user",
         distributedPools,
         balance,
+        updatedAtTimestamp,
       } satisfies UserNodeData,
       position: { x: 0, y: 0 },
     });
