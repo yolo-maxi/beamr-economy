@@ -1,22 +1,32 @@
 import { useEffect, useState, useCallback } from "react";
 import FlowGraph from "./components/FlowGraph";
 import PriceIndicator from "./components/PriceIndicator";
+import ReviewPanel from "./components/ReviewPanel";
+import UpdateNotification from "./components/UpdateNotification";
 import { fetchUserByUsername } from "./lib/farcaster";
 import { Agentation, type Annotation } from "agentation";
-import { checkAndSaveEditToken, validateToken, submitAnnotations, AGENTATION_API } from "./lib/agentation";
+import { 
+  checkAndSaveEditToken, 
+  validateToken, 
+  submitAnnotations, 
+  AGENTATION_API,
+  type TokenValidation,
+} from "./lib/agentation";
 
 export default function App() {
   const [beamrLogo, setBeamrLogo] = useState<string | null>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
+  const [tokenInfo, setTokenInfo] = useState<TokenValidation | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Check for edit token on mount
   useEffect(() => {
     const token = checkAndSaveEditToken();
     if (token) {
-      validateToken(token).then(({ valid }) => {
-        if (valid) {
+      validateToken(token).then((info) => {
+        if (info.valid) {
           setEditToken(token);
+          setTokenInfo(info);
           setIsEditMode(true);
         }
       });
@@ -76,18 +86,33 @@ export default function App() {
           </div>
         </div>
       </div>
-      {isEditMode && (
-        <Agentation
-          apiMode
-          apiEndpoint={AGENTATION_API}
-          editToken={editToken || undefined}
-          onSend={handleSend}
-          pollInterval={20000}
-          multiplayerMode
-          defaultMultiplayer
-        />
+      
+      {isEditMode && editToken && (
+        <>
+          {/* Update notification - polls and shows when changes are ready */}
+          <UpdateNotification 
+            editToken={editToken} 
+            pollInterval={5000}
+          />
+          
+          <Agentation
+            apiMode
+            apiEndpoint={AGENTATION_API}
+            editToken={editToken}
+            onSend={handleSend}
+            pollInterval={20000}
+            multiplayerMode
+            defaultMultiplayer
+          />
+          
+          {tokenInfo && (
+            <ReviewPanel
+              editToken={editToken}
+              tokenInfo={tokenInfo}
+            />
+          )}
+        </>
       )}
     </div>
   );
 }
-

@@ -42,8 +42,6 @@ type UserProfilePanelProps = {
   onClose: () => void;
 };
 
-const MAX_VISIBLE_STREAMS = 5; // Show top 5 by default
-
 export default function UserProfilePanel({
   selectedNodeId,
   nodes,
@@ -211,15 +209,7 @@ export default function UserProfilePanel({
             </button>
             {showIncoming && (
               <div className="max-h-40 overflow-y-auto px-2 pb-2">
-                {incomingStreams.slice(0, MAX_VISIBLE_STREAMS).map((stream) => (
-                  <StreamRow key={stream.userId} stream={stream} type="incoming" />
-                ))}
-                {incomingStreams.length > MAX_VISIBLE_STREAMS && (
-                  <div className="text-center text-[10px] text-slate-500 py-1">
-                    +{incomingStreams.length - MAX_VISIBLE_STREAMS} more (scroll)
-                  </div>
-                )}
-                {incomingStreams.slice(MAX_VISIBLE_STREAMS).map((stream) => (
+                {incomingStreams.map((stream) => (
                   <StreamRow key={stream.userId} stream={stream} type="incoming" />
                 ))}
               </div>
@@ -248,15 +238,7 @@ export default function UserProfilePanel({
             </button>
             {showOutgoing && (
               <div className="max-h-40 overflow-y-auto px-2 pb-2">
-                {outgoingStreams.slice(0, MAX_VISIBLE_STREAMS).map((stream) => (
-                  <StreamRow key={stream.userId} stream={stream} type="outgoing" />
-                ))}
-                {outgoingStreams.length > MAX_VISIBLE_STREAMS && (
-                  <div className="text-center text-[10px] text-slate-500 py-1">
-                    +{outgoingStreams.length - MAX_VISIBLE_STREAMS} more (scroll)
-                  </div>
-                )}
-                {outgoingStreams.slice(MAX_VISIBLE_STREAMS).map((stream) => (
+                {outgoingStreams.map((stream) => (
                   <StreamRow key={stream.userId} stream={stream} type="outgoing" />
                 ))}
               </div>
