@@ -121,7 +121,7 @@ export default function UpdateNotification({ editToken, pollInterval = 5000 }: U
       ))}
 
       {/* Toast notifications */}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      <div className="fixed top-4 right-4 z-[100003] flex flex-col gap-2 max-w-sm">
         {pendingUpdates.map((update, index) => (
           <div
             key={update.id}
