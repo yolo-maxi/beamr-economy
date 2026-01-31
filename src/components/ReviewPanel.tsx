@@ -29,16 +29,22 @@ function ToolbarButton({ isOpen, onClick, reviewCount, activeCount, isDark }: {
   useEffect(() => {
     // Find the toolbar controls container (the div with the buttons)
     const findToolbar = () => {
-      // Look for the controls content div inside the toolbar
-      const controls = document.querySelector('[class*="controlsContent"]');
+      // Look for the controls content div inside the toolbar (visible state)
+      const controls = document.querySelector('[class*="controlsContent"][class*="visible"]');
       if (controls) {
         setToolbarControls(controls);
+        return;
+      }
+      // Fallback: try to find just the controlsContent
+      const fallback = document.querySelector('[class*="controlsContent"]');
+      if (fallback) {
+        setToolbarControls(fallback);
       }
     };
 
     findToolbar();
-    // Re-check periodically in case toolbar loads later
-    const interval = setInterval(findToolbar, 500);
+    // Re-check periodically in case toolbar loads later or expands
+    const interval = setInterval(findToolbar, 300);
     return () => clearInterval(interval);
   }, []);
 
