@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { fetchAnnotations, type AnnotationSummary } from "agentation";
+import { fetchAnnotations, type AnnotationSummary } from "vibeclaw";
 
 interface UpdateNotificationProps {
   editToken: string;

@@ -12,7 +12,7 @@ import {
   validateToken, 
   submitAnnotations, 
   AGENTATION_API,
-} from "agentation";
+} from "vibeclaw";
 
 export default function App() {
   const [beamrLogo, setBeamrLogo] = useState<string | null>(null);

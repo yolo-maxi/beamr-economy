@@ -9,13 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "agentation": "file:../agentation/_package-export",
-    "agentation-flow": "file:../agentation/_package-export",
     "d3-force": "^3.0.0",
     "dagre": "^0.8.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "reactflow": "^11.10.1"
+    "reactflow": "^11.10.1",
+    "vibeclaw": "link:../vibeClaw/_package-export"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",
