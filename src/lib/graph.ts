@@ -265,14 +265,27 @@ export async function buildGraphElements(
       const memberAddress = normalizeAddress(member.account.id);
       ensureUserNode(memberAddress);
       
+      // Compute total distributor flow for proportional attribution
+      const totalDistributorFlow = poolDistributors.reduce(
+        (sum, d) => sum + safeBigInt(d.flowRate), 0n
+      );
+
       // Create edge from each distributor to this member
       for (const distributor of poolDistributors) {
+        const distributorFlow = safeBigInt(distributor.flowRate);
+        if (distributorFlow <= 0n) continue; // skip inactive distributors
+        
         const distributorAddress = normalizeAddress(distributor.account.id);
         const source = makeAccountNodeId(distributorAddress);
         const target = makeAccountNodeId(memberAddress);
         
         // Skip self-edges
         if (source === target) continue;
+        
+        // Attribute flow proportionally: this distributor's share of total pool flow to this member
+        const distributorMemberFlowRate = totalDistributorFlow > 0n
+          ? (memberFlowRate * distributorFlow) / totalDistributorFlow
+          : 0n;
         
         // Create a key for this source-target pair to track edge count
         const pairKey = `${source}-${target}`;
@@ -284,7 +297,7 @@ export async function buildGraphElements(
         // Using maximum curvature values (1.0 and -1.0) for clear visual separation
         const curvature = edgeIndex % 2 === 0 ? 1.0 : -1.0;
         
-        const flowRateStr = memberFlowRate.toString();
+        const flowRateStr = distributorMemberFlowRate.toString();
         const strokeWidth = canComputeFlows
           ? flowRateToStrokeWidth(flowRateStr)
           : 1.5;
@@ -303,7 +316,7 @@ export async function buildGraphElements(
             strokeDasharray: canComputeFlows ? undefined : "6 4",
           },
           data: {
-            flowRate: memberFlowRate.toString(),
+            flowRate: distributorMemberFlowRate.toString(),
             units: units.toString(),
           },
         } as Edge);
@@ -311,13 +324,13 @@ export async function buildGraphElements(
         // Track flow stats for both parties
         // Incoming flows for the member (receiver)
         const memberIncoming = incomingFlowsByUser.get(memberAddress) ?? { totalFlowRate: 0n, senders: new Set<string>() };
-        memberIncoming.totalFlowRate += memberFlowRate;
+        memberIncoming.totalFlowRate += distributorMemberFlowRate;
         memberIncoming.senders.add(distributorAddress);
         incomingFlowsByUser.set(memberAddress, memberIncoming);
         
         // Outgoing flows for the distributor (sender)
         const distributorOutgoing = outgoingFlowsByUser.get(distributorAddress) ?? { totalFlowRate: 0n, receivers: new Set<string>() };
-        distributorOutgoing.totalFlowRate += memberFlowRate;
+        distributorOutgoing.totalFlowRate += distributorMemberFlowRate;
         distributorOutgoing.receivers.add(memberAddress);
         outgoingFlowsByUser.set(distributorAddress, distributorOutgoing);
       }

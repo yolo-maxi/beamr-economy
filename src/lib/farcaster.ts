@@ -220,11 +220,8 @@ export async function fetchUserByUsername(username: string): Promise<{
         avatarUrl: readAvatarUrl(user) ?? undefined,
       };
     }
-    // If API route returns 500 (not configured), fall through to direct API
-    if (response.status === 500) {
-      throw new Error("API proxy not configured");
-    }
-    return null;
+    // Proxy not available — fall through to direct API
+    throw new Error("API proxy not available");
   } catch (error) {
     // Fall through to direct API if proxy fails
   }
@@ -303,11 +300,8 @@ export async function resolveNeynarProfiles(addresses: string[]) {
           body: JSON.stringify({ addresses: batch }),
         });
         if (!response.ok) {
-          // If API route returns 500 (not configured), throw to fall through
-          if (response.status === 500) {
-            throw new Error("API proxy not configured");
-          }
-          return [];
+          // Proxy not available — throw to fall through to direct API
+          throw new Error("API proxy not available");
         }
         const payload = (await response.json()) as unknown;
         return normalizePayloadEntries(payload);

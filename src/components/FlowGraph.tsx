@@ -448,9 +448,8 @@ export default function FlowGraph() {
             Retry
           </button>
           <p className="text-xs text-slate-400">
-            Set <span className="font-mono">VITE_SUPERFLUID_SUBGRAPH_URL</span> in
-            your environment to point at the Superfluid subgraph for the BEAMR
-            network.
+            Could not reach the Superfluid subgraph. Check your connection or
+            update the URL in settings below.
           </p>
           <SettingsPanel
             config={draftConfig}

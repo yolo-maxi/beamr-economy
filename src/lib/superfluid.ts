@@ -127,15 +127,10 @@ function readStoredConfig(): Partial<BeamrConfig> {
 
 export function readBeamrConfig(): BeamrConfig {
   const stored = readStoredConfig();
-  const envSubgraph = import.meta.env.VITE_SUPERFLUID_SUBGRAPH_URL as
-    | string
-    | undefined;
-  const envToken = import.meta.env.VITE_BEAMR_TOKEN_ADDRESS as
-    | string
-    | undefined;
+  const DEFAULT_SUBGRAPH_URL = "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1";
   return {
-    subgraphUrl: stored.subgraphUrl ?? envSubgraph ?? "",
-    tokenAddress: stored.tokenAddress ?? envToken ?? DEFAULT_BEAMR_ADDRESS,
+    subgraphUrl: stored.subgraphUrl ?? DEFAULT_SUBGRAPH_URL,
+    tokenAddress: stored.tokenAddress ?? DEFAULT_BEAMR_ADDRESS,
   };
 }
 
