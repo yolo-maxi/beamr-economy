@@ -20,7 +20,6 @@ import {
   type BeamrData,
   fetchBeamrData,
   readBeamrConfig,
-  saveBeamrConfig,
 } from "../lib/superfluid";
 import { preloadImage } from "../lib/imageCache";
 import { shortenAddress, formatCompactFlowRate, formatTokenBalance, saveNodePositions, formatLastActivity } from "../lib/utils";
@@ -54,11 +53,12 @@ function updateUrlWithUser(userId: string | null) {
   window.history.replaceState({}, "", url.toString());
 }
 
-export default function FlowGraph() {
-  const [config, setConfig] = useState<BeamrConfig>(() => readBeamrConfig());
-  const [draftConfig, setDraftConfig] = useState<BeamrConfig>(() =>
-    readBeamrConfig()
-  );
+type FlowGraphProps = {
+  onStreamCountChange?: (count: number) => void;
+};
+
+export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
+  const [config] = useState<BeamrConfig>(() => readBeamrConfig());
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -71,6 +71,13 @@ export default function FlowGraph() {
   const [retryCount, setRetryCount] = useState(0);
   const [currentData, setCurrentData] = useState<BeamrData | null>(null);
   const [nodesDraggable, setNodesDraggable] = useState(true);
+  const [filterMode, setFilterMode] = useState<"none" | "only-receive" | "only-send">("none");
+  const [searchAddress, setSearchAddress] = useState("");
+
+  // Report edge count (active streams) to parent
+  useEffect(() => {
+    onStreamCountChange?.(edges.length);
+  }, [edges.length, onStreamCountChange]);
 
   // Sync selectedNodeId to URL
   useEffect(() => {
@@ -164,20 +171,6 @@ export default function FlowGraph() {
       clearInterval(interval);
     };
   }, [config, retryCount]);
-
-  useEffect(() => {
-    setDraftConfig(config);
-  }, [config]);
-
-
-  const handleSaveConfig = () => {
-    const cleaned = {
-      subgraphUrl: draftConfig.subgraphUrl.trim(),
-      tokenAddress: draftConfig.tokenAddress.trim(),
-    };
-    saveBeamrConfig(cleaned);
-    setConfig(cleaned);
-  };
 
   const handleRetry = () => {
     setError(null);
@@ -273,6 +266,23 @@ export default function FlowGraph() {
       });
   }, [nodes]);
 
+  // Top 5 streamers by total flow rate (incoming + outgoing)
+  const topStreamers = useMemo(() => {
+    return sortedUsers
+      .map((user) => {
+        const inRate = user.incomingFlows?.totalFlowRate ?? 0n;
+        const outRate = user.outgoingFlows?.totalFlowRate ?? 0n;
+        const totalRate = inRate + outRate;
+        return { ...user, _totalRate: totalRate };
+      })
+      .sort((a, b) => {
+        if (b._totalRate > a._totalRate) return 1;
+        if (b._totalRate < a._totalRate) return -1;
+        return 0;
+      })
+      .slice(0, 5);
+  }, [sortedUsers]);
+
   const handleUserListClick = (nodeId: string) => {
     setSelectedNodeId(nodeId);
     // Fit view to show full graph (same as box button in Controls)
@@ -280,6 +290,67 @@ export default function FlowGraph() {
       reactFlowInstance.fitView({ duration: 600 });
     }
   };
+
+  // Compute counts for filter buttons (always, regardless of active filter)
+  const filterCounts = useMemo(() => {
+    let onlyReceive = 0;
+    let onlySend = 0;
+    for (const node of nodes) {
+      if (node.type !== "user") continue;
+      const data = node.data as UserNodeProps["data"];
+      const hasIncoming = data.incomingFlows && data.incomingFlows.userCount > 0;
+      const hasOutgoing = data.outgoingFlows && data.outgoingFlows.userCount > 0;
+      if (hasIncoming && !hasOutgoing) onlyReceive++;
+      if (!hasIncoming && hasOutgoing) onlySend++;
+    }
+    return { onlyReceive, onlySend };
+  }, [nodes]);
+
+  // Compute which node IDs match the search address
+  const searchMatchNodeId = useMemo(() => {
+    if (!searchAddress.trim() || searchAddress.trim().length < 3) return null;
+    const query = searchAddress.toLowerCase().trim();
+    for (const node of nodes) {
+      if (node.type !== "user") continue;
+      const data = node.data as UserNodeProps["data"];
+      if (
+        data.address.toLowerCase().includes(query) ||
+        data.label.toLowerCase().includes(query)
+      ) {
+        return node.id;
+      }
+    }
+    return null;
+  }, [nodes, searchAddress]);
+
+  // Auto-select and zoom to searched node
+  useEffect(() => {
+    if (searchMatchNodeId && searchAddress.trim().length >= 3) {
+      setSelectedNodeId(searchMatchNodeId);
+      if (reactFlowInstance) {
+        reactFlowInstance.fitView({ duration: 600 });
+      }
+    }
+  }, [searchMatchNodeId, reactFlowInstance, searchAddress]);
+
+  // Compute which node IDs match the current filter mode
+  const filteredNodeIds = useMemo(() => {
+    if (filterMode === "none") return null;
+    const ids = new Set<string>();
+    for (const node of nodes) {
+      if (node.type !== "user") continue;
+      const data = node.data as UserNodeProps["data"];
+      const hasIncoming = data.incomingFlows && data.incomingFlows.userCount > 0;
+      const hasOutgoing = data.outgoingFlows && data.outgoingFlows.userCount > 0;
+      if (filterMode === "only-receive" && hasIncoming && !hasOutgoing) {
+        ids.add(node.id);
+      }
+      if (filterMode === "only-send" && !hasIncoming && hasOutgoing) {
+        ids.add(node.id);
+      }
+    }
+    return ids;
+  }, [nodes, filterMode]);
 
   const { styledNodes, styledEdges } = useMemo(() => {
     const baseEdges = edges.map((edge) => ({
@@ -291,6 +362,47 @@ export default function FlowGraph() {
     }));
 
     const activeNodeId = selectedNodeId;
+
+    // If filter mode is active and no node selected, apply filter highlighting
+    if (!activeNodeId && filteredNodeIds && filteredNodeIds.size > 0) {
+      // Collect edges connected to filtered nodes
+      const filteredEdgeIds = new Set<string>();
+      for (const edge of edges) {
+        if (filteredNodeIds.has(edge.source) || filteredNodeIds.has(edge.target)) {
+          filteredEdgeIds.add(edge.id);
+        }
+      }
+
+      return {
+        styledNodes: nodes.map((node) => {
+          const isFiltered = filteredNodeIds.has(node.id);
+          return {
+            ...node,
+            draggable: nodesDraggable,
+            data: {
+              ...node.data,
+              highlight: isFiltered
+                ? (filterMode === "only-receive" ? "upstream" : "downstream")
+                : undefined,
+              dimmed: !isFiltered,
+            },
+          };
+        }),
+        styledEdges: baseEdges.map((edge) => {
+          if (!filteredEdgeIds.has(edge.id)) return edge;
+          const stroke = filterMode === "only-receive" ? "#22c55e" : "#ef4444";
+          return {
+            ...edge,
+            style: {
+              ...edge.style,
+              opacity: 0.7,
+              stroke,
+              strokeWidth: Math.max((edge.style?.strokeWidth as number) ?? 1.5, 4),
+            },
+          };
+        }),
+      };
+    }
 
     if (!activeNodeId) {
       return {
@@ -382,7 +494,7 @@ export default function FlowGraph() {
     });
 
     return { styledNodes, styledEdges };
-  }, [edges, selectedNodeId, nodes, nodesDraggable]);
+  }, [edges, selectedNodeId, nodes, nodesDraggable, filteredNodeIds, filterMode]);
 
   const handleNodeClick: NodeMouseHandler = (_, node) => {
     if (node.type !== "user") return;
@@ -448,14 +560,8 @@ export default function FlowGraph() {
             Retry
           </button>
           <p className="text-xs text-slate-400">
-            Could not reach the Superfluid subgraph. Check your connection or
-            update the URL in settings below.
+            Could not reach the Superfluid subgraph. Check your connection and try again.
           </p>
-          <SettingsPanel
-            config={draftConfig}
-            onChange={setDraftConfig}
-            onSave={handleSaveConfig}
-          />
         </div>
       </div>
     );
@@ -470,13 +576,8 @@ export default function FlowGraph() {
               No pools or streams returned
             </h2>
             <p className="text-sm text-slate-300">
-              Check the subgraph URL and token address, then try again.
+              No active pools or streams found. Try refreshing the page.
             </p>
-            <SettingsPanel
-              config={draftConfig}
-              onChange={setDraftConfig}
-              onSave={handleSaveConfig}
-            />
           </div>
         </div>
       )}
@@ -567,6 +668,7 @@ export default function FlowGraph() {
           </ControlButton>
         </Controls>
         <Background color="#1e293b" gap={20} />
+        {/* Search bar removed — using the one in the user list instead */}
         {/* Navigation Panel - contains user list and minimap */}
         <Panel position="bottom-right" className="!m-3 !p-0" style={{ pointerEvents: 'auto' }}>
           <div style={{ pointerEvents: 'auto' }}>
@@ -576,6 +678,11 @@ export default function FlowGraph() {
               onUserClick={handleUserListClick}
               nodeCount={nodes.length}
               edgeCount={edges.length}
+              filterMode={filterMode}
+              onFilterChange={setFilterMode}
+              onlyReceiveCount={filterCounts.onlyReceive}
+              onlySendCount={filterCounts.onlySend}
+              topStreamers={topStreamers}
             />
           </div>
         </Panel>
@@ -994,9 +1101,14 @@ type NavigationPanelProps = {
   onUserClick: (nodeId: string) => void;
   nodeCount: number;
   edgeCount: number;
+  filterMode: "none" | "only-receive" | "only-send";
+  onFilterChange: (mode: "none" | "only-receive" | "only-send") => void;
+  onlyReceiveCount: number;
+  onlySendCount: number;
+  topStreamers: UserListItem[];
 };
 
-const NAV_PANEL_WIDTH = 200;
+const NAV_PANEL_WIDTH = 240;
 
 function NavigationPanel({
   users,
@@ -1004,8 +1116,14 @@ function NavigationPanel({
   onUserClick,
   nodeCount,
   edgeCount,
+  filterMode,
+  onFilterChange,
+  onlyReceiveCount,
+  onlySendCount,
+  topStreamers,
 }: NavigationPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isTopStreamersExpanded, setIsTopStreamersExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const userRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -1040,6 +1158,104 @@ function NavigationPanel({
         style={{ position: "relative", width: NAV_PANEL_WIDTH, height: 120, margin: 0 }}
         className="!static !m-0 rounded border border-slate-700/80"
       />
+
+      {/* Filter Buttons */}
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onFilterChange(filterMode === "only-receive" ? "none" : "only-receive");
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className={`flex-1 rounded px-2 py-1 text-[9px] font-medium transition-colors ${
+            filterMode === "only-receive"
+              ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-400/50"
+              : "bg-slate-800/80 text-slate-400 ring-1 ring-slate-700/50 hover:bg-slate-700/50 hover:text-slate-300"
+          }`}
+          title="Highlight users who only receive flows (no outgoing)"
+        >
+          ↓ Only Receive ({onlyReceiveCount})
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onFilterChange(filterMode === "only-send" ? "none" : "only-send");
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className={`flex-1 rounded px-2 py-1 text-[9px] font-medium transition-colors ${
+            filterMode === "only-send"
+              ? "bg-red-500/30 text-red-300 ring-1 ring-red-400/50"
+              : "bg-slate-800/80 text-slate-400 ring-1 ring-slate-700/50 hover:bg-slate-700/50 hover:text-slate-300"
+          }`}
+          title="Highlight users who only send flows (no incoming)"
+        >
+          ↑ Only Send ({onlySendCount})
+        </button>
+      </div>
+
+      {/* Top Streamers */}
+      {topStreamers.length > 0 && (
+        <div className="rounded border border-amber-500/30 bg-slate-900/95 shadow-lg ring-1 ring-amber-400/20">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsTopStreamersExpanded(!isTopStreamersExpanded);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex w-full items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-slate-800/50"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]">🏆</span>
+              <span className="text-[10px] text-amber-300 font-medium">Top Streamers</span>
+            </div>
+            <svg
+              className={`h-3 w-3 text-slate-400 transition-transform ${isTopStreamersExpanded ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {isTopStreamersExpanded && (
+            <div className="border-t border-amber-500/20 px-1 py-1">
+              {topStreamers.map((user, index) => {
+                const isSelected = selectedNodeId === user.id;
+                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+                return (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => onUserClick(user.id)}
+                    className={`flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left transition-colors hover:bg-slate-700/50 ${
+                      isSelected ? "bg-amber-500/20" : ""
+                    }`}
+                  >
+                    <span className="w-4 text-center text-[9px]">{medal}</span>
+                    <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-[6px]">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.label} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <span className="text-slate-300">{user.label.slice(0, 2).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <span className={`min-w-0 flex-1 truncate text-[10px] ${isSelected ? "text-amber-200 font-medium" : "text-slate-300"}`}>
+                      {user.label}
+                    </span>
+                    <CompactUserCounts incoming={user.incomingFlows} outgoing={user.outgoingFlows} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* User List Section - header at bottom, content grows upward */}
       {users.length > 0 && (
@@ -1162,49 +1378,5 @@ function formatBigIntFlowRate(flowRate: bigint): string | null {
   return `${whole}.${fractionStr}/day`;
 }
 
-type SettingsPanelProps = {
-  config: BeamrConfig;
-  onChange: (config: BeamrConfig) => void;
-  onSave: () => void;
-};
-
-function SettingsPanel({ config, onChange, onSave }: SettingsPanelProps) {
-  return (
-    <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/70 p-4 text-left text-xs text-slate-300">
-      <div>
-        <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-          Superfluid subgraph URL
-        </label>
-        <input
-          className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-400"
-          placeholder="https://..."
-          value={config.subgraphUrl}
-          onChange={(event) =>
-            onChange({ ...config, subgraphUrl: event.target.value })
-          }
-        />
-      </div>
-      <div>
-        <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-          BEAMR token address
-        </label>
-        <input
-          className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-400"
-          placeholder="0x..."
-          value={config.tokenAddress}
-          onChange={(event) =>
-            onChange({ ...config, tokenAddress: event.target.value })
-          }
-        />
-      </div>
-      <button
-        type="button"
-        onClick={onSave}
-        className="inline-flex items-center rounded-md bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow hover:bg-cyan-400"
-      >
-        Save & reload
-      </button>
-    </div>
-  );
-}
+// Settings panel removed — config is hardcoded
 

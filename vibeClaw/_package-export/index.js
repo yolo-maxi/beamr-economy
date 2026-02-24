@@ -1,0 +1,12 @@
+export const VibeClaw = () => null;
+export const initVibeClaw = () => {};
+export const fetchAnnotations = async () => [];
+export const AnnotationOverlay = () => null;
+export const AnnotationsPanel = () => null;
+export const FloatingAnnotateButton = () => null;
+export const Agentation = () => null;
+export const ReviewPanel = () => null;
+export const checkAndSaveEditToken = () => null;
+export const validateToken = async () => null;
+export const submitAnnotations = async () => {};
+export const AGENTATION_API = "";

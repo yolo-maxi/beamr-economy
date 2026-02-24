@@ -41,7 +41,7 @@ export type BeamrConfig = {
 };
 
 const DEFAULT_BEAMR_ADDRESS = "0x22f1cd353441351911691EE4049c7b773abb1ecF";
-const STORAGE_KEY = "beamr-viz-config";
+const DEFAULT_SUBGRAPH_URL = "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1";
 
 const POOLS_AND_DISTRIBUTIONS_QUERY = `
   query BeamrPoolsAndDistributions($token: String!) {
@@ -114,29 +114,11 @@ async function fetchGraph<T>(
   return payload.data;
 }
 
-function readStoredConfig(): Partial<BeamrConfig> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Partial<BeamrConfig>;
-  } catch {
-    return {};
-  }
-}
-
 export function readBeamrConfig(): BeamrConfig {
-  const stored = readStoredConfig();
-  const DEFAULT_SUBGRAPH_URL = "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1";
   return {
-    subgraphUrl: stored.subgraphUrl ?? DEFAULT_SUBGRAPH_URL,
-    tokenAddress: stored.tokenAddress ?? DEFAULT_BEAMR_ADDRESS,
+    subgraphUrl: DEFAULT_SUBGRAPH_URL,
+    tokenAddress: DEFAULT_BEAMR_ADDRESS,
   };
-}
-
-export function saveBeamrConfig(config: BeamrConfig) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
 function resolveBeamrConfig(overrides?: Partial<BeamrConfig>): BeamrConfig {
