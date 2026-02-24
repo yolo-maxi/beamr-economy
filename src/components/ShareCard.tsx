@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { shortenAddress } from "../lib/utils";
 import { fetchUserByUsername } from "../lib/farcaster";
 import type { Edge, Node } from "reactflow";
@@ -954,22 +954,19 @@ export default function ShareCard({
 
   /* ─── Capture → PNG (2x for 1200×630) then share ───────────────────────── */
 
-  const captureCard = useCallback(async (): Promise<HTMLCanvasElement | null> => {
+  const captureCard = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setCapturing(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: null,
-        scale: 2, // 600×315 at 2x → 1200×630
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
+      const dataUrl = await toPng(cardRef.current, {
         width: 600,
         height: 315,
+        pixelRatio: 2, // 600×315 at 2x → 1200×630
+        cacheBust: true,
       });
-      return canvas;
+      return dataUrl;
     } catch (err) {
-      console.error("html2canvas failed:", err);
+      console.error("html-to-image failed:", err);
       return null;
     } finally {
       setCapturing(false);
@@ -977,27 +974,26 @@ export default function ShareCard({
   }, []);
 
   const handleShare = useCallback(async () => {
-    const canvas = await captureCard();
-    if (!canvas) return;
+    const dataUrl = await captureCard();
+    if (!dataUrl) return;
 
     const filename = `beamr-flow-${userData.label.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+
+    // Convert data URL to blob
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
 
     // Try native Web Share API first (works on mobile, supports sharing images)
     if (navigator.share && navigator.canShare) {
       try {
-        const blob = await new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, "image/png")
-        );
-        if (blob) {
-          const file = new File([blob], filename, { type: "image/png" });
-          const shareData = {
-            text: "Check out my $BEAMR streaming position! 🌊",
-            files: [file],
-          };
-          if (navigator.canShare(shareData)) {
-            await navigator.share(shareData);
-            return;
-          }
+        const file = new File([blob], filename, { type: "image/png" });
+        const shareData = {
+          text: "Check out my $BEAMR streaming position! 🌊",
+          files: [file],
+        };
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          return;
         }
       } catch (err) {
         // User cancelled or share failed — fall through to download
@@ -1007,10 +1003,7 @@ export default function ShareCard({
 
     // Desktop fallback: copy image to clipboard + open Farcaster compose
     try {
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png")
-      );
-      if (blob && navigator.clipboard?.write) {
+      if (navigator.clipboard?.write) {
         await navigator.clipboard.write([
           new ClipboardItem({ "image/png": blob }),
         ]);
@@ -1032,7 +1025,7 @@ export default function ShareCard({
     // Final fallback: just download
     const link = document.createElement("a");
     link.download = filename;
-    link.href = canvas.toDataURL("image/png");
+    link.href = dataUrl;
     link.click();
   }, [captureCard, userData.label, userData.address]);
 
@@ -1159,11 +1152,11 @@ export default function ShareCard({
           </button>
           <button
             onClick={async () => {
-              const canvas = await captureCard();
-              if (!canvas) return;
+              const dataUrl = await captureCard();
+              if (!dataUrl) return;
               const link = document.createElement("a");
               link.download = `beamr-flow-${userData.label.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-              link.href = canvas.toDataURL("image/png");
+              link.href = dataUrl;
               link.click();
             }}
             disabled={capturing}
