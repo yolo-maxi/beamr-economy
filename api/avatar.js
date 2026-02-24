@@ -1,45 +1,50 @@
 // Vercel Serverless Function: Avatar proxy with edge caching
 // GET /api/avatar?url=<encoded-avatar-url>
 
+const https = require('https');
+const http = require('http');
+
+const ALLOWED = ['imagedelivery.net', 'i.imgur.com', 'imgur.com', 'res.cloudinary.com', 
+                 'imagekit.io', 'warpcast.com', 'farcaster.xyz', 'supercast.xyz',
+                 'openseauserdata.com', 'lh3.googleusercontent.com', 'pbs.twimg.com',
+                 'cdn.stamp.fyi', 'euc.li', 'wrpcd.net'];
+
+function fetchImage(url) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? https : http;
+    const req = mod.get(url, { headers: { 'User-Agent': 'BeamrEconomy/1.0' }, timeout: 5000 }, (res) => {
+      // Follow redirects
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchImage(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ buffer: Buffer.concat(chunks), contentType: res.headers['content-type'] || 'image/png' }));
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+  });
+}
+
 module.exports = async function handler(req, res) {
   const { url } = req.query;
-  
-  if (!url) {
-    return res.status(400).json({ error: 'Missing url parameter' });
-  }
+  if (!url) return res.status(400).json({ error: 'Missing url parameter' });
 
   try {
     const decoded = decodeURIComponent(url);
-    
-    // Only allow image URLs from known sources
-    const allowed = ['imagedelivery.net', 'i.imgur.com', 'imgur.com', 'res.cloudinary.com', 
-                     'imagekit.io', 'warpcast.com', 'farcaster.xyz', 'supercast.xyz',
-                     'openseauserdata.com', 'lh3.googleusercontent.com', 'pbs.twimg.com',
-                     'cdn.stamp.fyi', 'euc.li', 'wrpcd.net'];
-    
     const urlObj = new URL(decoded);
-    if (!allowed.some(h => urlObj.hostname.endsWith(h))) {
+    if (!ALLOWED.some(h => urlObj.hostname.endsWith(h))) {
       return res.status(403).json({ error: 'Domain not allowed' });
     }
 
-    const response = await fetch(decoded, {
-      headers: { 'User-Agent': 'BeamrEconomy/1.0' },
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!response.ok) {
-      return res.status(502).json({ error: 'Upstream failed' });
-    }
-
-    const contentType = response.headers.get('content-type') || 'image/png';
-    const buffer = Buffer.from(await response.arrayBuffer());
-
-    // Cache for 7 days on CDN, 1 day in browser
+    const { buffer, contentType } = await fetchImage(decoded);
     res.setHeader('Cache-Control', 'public, s-maxage=604800, max-age=86400');
     res.setHeader('Content-Type', contentType);
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.send(buffer);
   } catch (err) {
-    return res.status(500).json({ error: 'Proxy error' });
+    return res.status(502).json({ error: 'Proxy error', detail: err.message });
   }
 };
