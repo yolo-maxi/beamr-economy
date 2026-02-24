@@ -966,8 +966,12 @@ export default function ShareCard({
   const captureCard = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setCapturing(true);
+    // Temporarily remove display scale for accurate capture
+    const el = cardRef.current;
+    const origTransform = el.style.transform;
+    el.style.transform = 'none';
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const dataUrl = await toPng(el, {
         width: 600,
         height: 315,
         pixelRatio: 2, // 600×315 at 2x → 1200×630
@@ -978,6 +982,7 @@ export default function ShareCard({
       console.error("html-to-image failed:", err);
       return null;
     } finally {
+      el.style.transform = origTransform;
       setCapturing(false);
     }
   }, []);
