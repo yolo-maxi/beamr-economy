@@ -86,18 +86,40 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
     updateUrlWithUser(selectedNodeId);
   }, [selectedNodeId]);
 
-  // When loading from URL with a user param, fit view once graph is ready
+  // When loading from URL with a user param, resolve and fit view
   const initialUserFromUrl = useRef(getInitialSelectedUser());
   useEffect(() => {
-    if (
-      initialUserFromUrl.current &&
-      reactFlowInstance &&
-      nodes.length > 0 &&
-      nodes.some((n) => n.id === initialUserFromUrl.current)
-    ) {
-      // Fit view to show the whole graph with selection highlighted
+    const param = initialUserFromUrl.current;
+    if (!param || !reactFlowInstance || nodes.length === 0) return;
+
+    // Try exact match first (e.g. account:0x...)
+    let matchedId: string | null = null;
+    if (nodes.some((n) => n.id === param)) {
+      matchedId = param;
+    } else {
+      // Try matching by address (with or without account: prefix)
+      const searchLower = param.toLowerCase().replace(/^account:/, "");
+      for (const n of nodes) {
+        if (n.type !== "user") continue;
+        const data = n.data as { address?: string; label?: string; farcaster?: string };
+        // Match by address
+        if (data.address?.toLowerCase() === searchLower) {
+          matchedId = n.id;
+          break;
+        }
+        // Match by Farcaster handle (with or without @)
+        const handle = searchLower.replace(/^@/, "");
+        if (data.farcaster?.toLowerCase() === handle || data.label?.toLowerCase() === handle || data.label?.toLowerCase() === `@${handle}`) {
+          matchedId = n.id;
+          break;
+        }
+      }
+    }
+
+    if (matchedId) {
+      setSelectedNodeId(matchedId);
       reactFlowInstance.fitView({ duration: 600 });
-      initialUserFromUrl.current = null; // Only do this once
+      initialUserFromUrl.current = null;
     }
   }, [reactFlowInstance, nodes]);
 
@@ -625,6 +647,9 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
         panOnDrag={true}
         panOnScroll={true}
         zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={true}
+        preventScrolling={true}
         onInit={setReactFlowInstance}
         onNodesChange={handleNodesChange}
         onNodeClick={handleNodeClick}
@@ -639,8 +664,8 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
           >
             {nodesDraggable ? (
               <svg
-                width="10"
-                height="10"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -653,8 +678,8 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
               </svg>
             ) : (
               <svg
-                width="10"
-                height="10"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

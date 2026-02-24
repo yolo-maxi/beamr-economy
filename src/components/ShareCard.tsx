@@ -812,6 +812,7 @@ export default function ShareCard({
 }: ShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -891,23 +892,65 @@ export default function ShareCard({
     }
   }, []);
 
-  const handleShareFarcaster = useCallback(async () => {
-    // Step 1: Download the image
+  const handleShare = useCallback(async () => {
     const canvas = await captureCard();
-    if (canvas) {
-      const link = document.createElement("a");
-      link.download = `beamr-flow-${userData.label.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+    if (!canvas) return;
+
+    const filename = `beamr-flow-${userData.label.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+
+    // Try native Web Share API first (works on mobile, supports sharing images)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/png")
+        );
+        if (blob) {
+          const file = new File([blob], filename, { type: "image/png" });
+          const shareData = {
+            text: "Check out my $BEAMR streaming position! 🌊",
+            files: [file],
+          };
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            return;
+          }
+        }
+      } catch (err) {
+        // User cancelled or share failed — fall through to download
+        if ((err as Error)?.name === "AbortError") return;
+      }
     }
 
-    // Step 2: Open Farcaster compose (short delay so download starts first)
-    setTimeout(() => {
-      const farcasterUrl =
-        "https://farcaster.xyz/~/compose?text=Check+out+my+%24BEAMR+streaming+position!+%F0%9F%8C%8A&embeds[]=https://beamr.repo.box";
-      window.open(farcasterUrl, "_blank", "noopener,noreferrer");
-    }, 300);
-  }, [captureCard, userData.label]);
+    // Desktop fallback: copy image to clipboard + open Farcaster compose
+    try {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+      if (blob && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        // Open Farcaster compose — user can paste the image
+        const userParam = userData.farcaster || userData.address;
+        const userUrl = `https://beamr.repo.box/?user=${encodeURIComponent(userParam)}`;
+        const farcasterUrl = `https://farcaster.xyz/~/compose?text=${encodeURIComponent(
+          `Check out my $BEAMR streaming position! 🌊\n\n[ paste image from clipboard ]\n\n${userUrl}`
+        )}`;
+        window.open(farcasterUrl, "_blank", "noopener,noreferrer");
+        setCopiedToClipboard(true);
+        setTimeout(() => setCopiedToClipboard(false), 3000);
+        return;
+      }
+    } catch {
+      // Clipboard API not available or failed
+    }
+
+    // Final fallback: just download
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }, [captureCard, userData.label, userData.address]);
 
   return (
     <div
@@ -1005,10 +1048,10 @@ export default function ShareCard({
           </div>
         </div>
 
-        {/* ─── Single Action Button: Share on Farcaster ──────────────── */}
+        {/* ─── Single Action Button: Share Image ──────────────── */}
         <div className="flex items-center gap-3">
           <button
-            onClick={handleShareFarcaster}
+            onClick={handleShare}
             disabled={capturing}
             className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-50"
             style={{
@@ -1016,17 +1059,11 @@ export default function ShareCard({
               boxShadow: "0 4px 20px rgba(124, 58, 237, 0.4)",
             }}
           >
-            {/* Farcaster icon */}
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 1000 1000"
-              fill="currentColor"
-            >
-              <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z" />
-              <path d="M128.889 253.333L157.778 351.111H182.222V746.667C169.949 746.667 160 756.616 160 768.889V795.556H155.556C143.283 795.556 133.333 805.505 133.333 817.778V844.444H382.222V817.778C382.222 805.505 372.273 795.556 360 795.556H355.556V768.889C355.556 756.616 345.606 746.667 333.333 746.667H306.667V253.333H128.889Z" />
-              <path d="M693.333 746.667C681.06 746.667 671.111 756.616 671.111 768.889V795.556H666.667C654.394 795.556 644.444 805.505 644.444 817.778V844.444H893.333V817.778C893.333 805.505 883.384 795.556 871.111 795.556H866.667V768.889C866.667 756.616 856.717 746.667 844.444 746.667V351.111H868.889L897.778 253.333H720V746.667H693.333Z" />
+            {/* Share icon */}
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            {capturing ? "Capturing…" : "Share on Farcaster"}
+            {capturing ? "Capturing…" : copiedToClipboard ? "✓ Image copied — paste in compose!" : "Share Image"}
           </button>
         </div>
       </div>

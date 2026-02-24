@@ -61,32 +61,28 @@ export default function App() {
     <div className="relative h-full w-full">
       <FlowGraph onStreamCountChange={setActiveStreamCount} />
       {/* Floating title - positioned outside ReactFlow to avoid clipping */}
-      <div className="pointer-events-none fixed left-4 top-8 z-50 sm:left-6 sm:top-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-5">
-          {/* Row 1 on mobile: Logo + Token name */}
-          <div className="flex items-center gap-2 sm:gap-5">
+      <div className="pointer-events-none fixed left-3 top-3 z-50 sm:left-6 sm:top-6">
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-5">
+          {/* Row 1 on mobile: Logo + Token name + Price */}
+          <div className="flex items-center gap-1.5 sm:gap-5">
             {beamrLogo && (
               <div className="relative">
-                {/* Animated glow background */}
-                <div className="absolute -inset-3 rounded-2xl bg-cyan-400/30 blur-xl animate-title-glow sm:-inset-4 sm:blur-2xl" />
-                <div className="absolute -inset-4 rounded-3xl bg-cyan-500/20 blur-2xl animate-title-glow sm:-inset-6 sm:blur-3xl" />
+                <div className="absolute -inset-2 rounded-xl bg-cyan-400/30 blur-lg animate-title-glow sm:-inset-4 sm:blur-2xl" />
                 <img
                   src={beamrLogo}
                   alt="BEAMR"
-                  className="relative h-10 w-10 rounded-lg shadow-xl shadow-cyan-500/60 ring-2 ring-cyan-400/40 sm:h-14 sm:w-14 sm:rounded-xl"
+                  className="relative h-7 w-7 rounded-md shadow-lg shadow-cyan-500/60 ring-1 ring-cyan-400/40 sm:h-14 sm:w-14 sm:rounded-xl sm:ring-2"
                 />
               </div>
             )}
             <div className="relative">
-              {/* Animated glow background for text */}
-              <div className="absolute -inset-x-3 -inset-y-1 rounded-lg bg-cyan-400/25 blur-xl animate-text-glow sm:-inset-x-4 sm:-inset-y-2 sm:rounded-xl sm:blur-2xl" />
-              <div className="absolute -inset-x-4 -inset-y-2 rounded-xl bg-cyan-500/15 blur-2xl animate-text-glow sm:-inset-x-6 sm:-inset-y-3 sm:rounded-2xl sm:blur-3xl" />
-              <h1 className="relative font-pixel text-lg tracking-widest text-cyan-100 animate-text-shimmer sm:text-2xl">
+              <div className="absolute -inset-x-2 -inset-y-0.5 rounded-md bg-cyan-400/25 blur-lg animate-text-glow sm:-inset-x-4 sm:-inset-y-2 sm:rounded-xl sm:blur-2xl" />
+              <h1 className="relative font-pixel text-sm tracking-widest text-cyan-100 animate-text-shimmer sm:text-2xl">
                 ECONOMY
               </h1>
             </div>
           </div>
-          {/* Row 2-3 on mobile: Price + Volume (PriceIndicator handles its own stacking) */}
+          {/* Row 2 on mobile: Price + Volume */}
           <div className="pointer-events-auto">
             <PriceIndicator activeStreamCount={activeStreamCount} />
           </div>
