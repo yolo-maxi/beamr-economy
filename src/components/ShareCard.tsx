@@ -901,11 +901,11 @@ export default function ShareCard({
       link.click();
     }
 
-    // Step 2: Open Warpcast compose (short delay so download starts first)
+    // Step 2: Open Farcaster compose (short delay so download starts first)
     setTimeout(() => {
-      const warpcastUrl =
-        "https://warpcast.com/~/compose?text=Check+out+my+%24BEAMR+streaming+position!+%F0%9F%8C%8A&embeds[]=https://beamr.repo.box";
-      window.open(warpcastUrl, "_blank", "noopener,noreferrer");
+      const farcasterUrl =
+        "https://farcaster.xyz/~/compose?text=Check+out+my+%24BEAMR+streaming+position!+%F0%9F%8C%8A&embeds[]=https://beamr.repo.box";
+      window.open(farcasterUrl, "_blank", "noopener,noreferrer");
     }, 300);
   }, [captureCard, userData.label]);
 

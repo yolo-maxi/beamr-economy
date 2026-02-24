@@ -61,7 +61,7 @@ export default function App() {
     <div className="relative h-full w-full">
       <FlowGraph onStreamCountChange={setActiveStreamCount} />
       {/* Floating title - positioned outside ReactFlow to avoid clipping */}
-      <div className="pointer-events-none fixed left-4 top-4 z-50 sm:left-6 sm:top-6">
+      <div className="pointer-events-none fixed left-4 top-8 z-50 sm:left-6 sm:top-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-5">
           {/* Row 1 on mobile: Logo + Token name */}
           <div className="flex items-center gap-2 sm:gap-5">

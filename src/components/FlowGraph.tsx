@@ -30,6 +30,7 @@ import {
   hasBeamrDataChanges,
 } from "../lib/dataCache";
 import UserProfilePanel from "./UserProfilePanel";
+import FindYourselfModal, { shouldShowFindYourselfModal } from "./FindYourselfModal";
 
 const POLL_INTERVAL_MS = 60_000;
 const NODE_TYPES = {
@@ -73,6 +74,7 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
   const [nodesDraggable, setNodesDraggable] = useState(true);
   const [filterMode, setFilterMode] = useState<"none" | "only-receive" | "only-send">("none");
   const [searchAddress, setSearchAddress] = useState("");
+  const [showFindModal, setShowFindModal] = useState(() => shouldShowFindYourselfModal());
 
   // Report edge count (active streams) to parent
   useEffect(() => {
@@ -694,6 +696,20 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
         edges={edges}
         onClose={() => setSelectedNodeId(null)}
       />
+      {/* Find Yourself Modal - shown on first visit when no ?user= param */}
+      {showFindModal && nodes.length > 0 && (
+        <FindYourselfModal
+          nodes={nodes}
+          onSelectNode={(nodeId) => {
+            setShowFindModal(false);
+            setSelectedNodeId(nodeId);
+            if (reactFlowInstance) {
+              reactFlowInstance.fitView({ duration: 600 });
+            }
+          }}
+          onSkip={() => setShowFindModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1123,7 +1139,7 @@ function NavigationPanel({
   topStreamers,
 }: NavigationPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isTopStreamersExpanded, setIsTopStreamersExpanded] = useState(true);
+  const [isTopStreamersExpanded, setIsTopStreamersExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const userRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 

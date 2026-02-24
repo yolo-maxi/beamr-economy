@@ -203,13 +203,15 @@ export default function PriceIndicator({ activeStreamCount }: PriceIndicatorProp
             <span className="font-mono font-semibold text-slate-300">{formatVolume(shownVolume)} $BEAMR</span>
           </div>
         )}
-        {activeStreamCount !== undefined && activeStreamCount > 0 && (
-          <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs ring-1 ring-slate-700/50" title="Active streams">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300 font-medium">{activeStreamCount} streams</span>
-          </div>
-        )}
-        <SocialLinks />
+        <div className="flex items-center gap-1.5">
+          {activeStreamCount !== undefined && activeStreamCount > 0 && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs ring-1 ring-slate-700/50" title="Active streams">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-slate-300 font-medium">{activeStreamCount} streams</span>
+            </div>
+          )}
+          <SocialLinks />
+        </div>
       </div>
     );
   }
@@ -275,16 +277,16 @@ export default function PriceIndicator({ activeStreamCount }: PriceIndicatorProp
         </div>
       )}
       
-      {/* Active Streams Counter */}
-      {activeStreamCount !== undefined && activeStreamCount > 0 && (
-        <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs ring-1 ring-slate-700/50" title="Active streams">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-slate-300 font-medium">{activeStreamCount} streams</span>
-        </div>
-      )}
-      
-      {/* Social Links */}
-      <SocialLinks />
+      {/* Active Streams Counter + Social Links */}
+      <div className="flex items-center gap-1.5">
+        {activeStreamCount !== undefined && activeStreamCount > 0 && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs ring-1 ring-slate-700/50" title="Active streams">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-300 font-medium">{activeStreamCount} streams</span>
+          </div>
+        )}
+        <SocialLinks />
+      </div>
     </div>
   );
 }

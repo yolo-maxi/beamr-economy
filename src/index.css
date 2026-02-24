@@ -163,16 +163,10 @@ body {
   }
 }
 
-/* Touch-friendly controls on mobile */
+/* Controls on mobile — keep compact */
 @media (max-width: 768px) {
   .react-flow__controls {
-    transform: scale(1.2);
-    transform-origin: bottom left;
-  }
-  
-  .react-flow__controls button {
-    width: 32px !important;
-    height: 32px !important;
+    transform: none;
   }
 }
 
@@ -208,9 +202,9 @@ body {
   border: none !important;
   border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
   color: rgb(148, 163, 184) !important; /* text-slate-400 */
-  width: 28px !important;
-  height: 28px !important;
-  padding: 6px !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 4px !important;
   transition: all 0.15s ease !important;
 }
 
@@ -229,8 +223,8 @@ body {
 
 .react-flow__controls-button svg {
   fill: currentColor !important;
-  max-width: 14px !important;
-  max-height: 14px !important;
+  max-width: 10px !important;
+  max-height: 10px !important;
 }
 
 .react-flow__controls-button path {
@@ -461,6 +455,22 @@ body {
 .animate-particle-4 {
   animation: particle-4 1.5s ease-out infinite;
   animation-delay: 0.6s;
+}
+
+/* Find Yourself modal entrance animation */
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 0.3s ease-out;
 }
 
 /* Hide agentation batch panel - using ReviewPanel instead */
