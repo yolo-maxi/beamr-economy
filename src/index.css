@@ -192,7 +192,7 @@ body {
 .react-flow__controls {
   background: rgba(15, 23, 42, 0.95) !important; /* bg-slate-950 */
   border: 1px solid rgba(51, 65, 85, 0.8) !important; /* border-slate-700 */
-  border-radius: 0.5rem !important;
+  border-radius: 0.375rem !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2) !important;
   overflow: hidden;
 }
@@ -202,9 +202,9 @@ body {
   border: none !important;
   border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
   color: rgb(148, 163, 184) !important; /* text-slate-400 */
-  width: 20px !important;
-  height: 20px !important;
-  padding: 4px !important;
+  width: 16px !important;
+  height: 16px !important;
+  padding: 2px !important;
   transition: all 0.15s ease !important;
 }
 
@@ -223,8 +223,8 @@ body {
 
 .react-flow__controls-button svg {
   fill: currentColor !important;
-  max-width: 10px !important;
-  max-height: 10px !important;
+  max-width: 8px !important;
+  max-height: 8px !important;
 }
 
 .react-flow__controls-button path {

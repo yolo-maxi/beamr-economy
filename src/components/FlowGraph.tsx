@@ -639,8 +639,8 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
           >
             {nodesDraggable ? (
               <svg
-                width="16"
-                height="16"
+                width="10"
+                height="10"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -653,8 +653,8 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
               </svg>
             ) : (
               <svg
-                width="16"
-                height="16"
+                width="10"
+                height="10"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1163,7 +1163,7 @@ function NavigationPanel({
   }, [users, searchQuery]);
 
   return (
-    <div className="flex flex-col-reverse gap-1" style={{ width: NAV_PANEL_WIDTH, pointerEvents: 'auto' }}>
+    <div className="flex flex-col-reverse gap-1 w-[180px] sm:w-[240px]" style={{ pointerEvents: 'auto' }}>
       {/* MiniMap */}
       <MiniMap
         nodeColor={(node) => {
@@ -1171,7 +1171,7 @@ function NavigationPanel({
           return hasDistributedPools ? "#0ea5e9" : "#38bdf8";
         }}
         maskColor="rgba(15,23,42,0.8)"
-        style={{ position: "relative", width: NAV_PANEL_WIDTH, height: 120, margin: 0 }}
+        style={{ position: "relative", width: "100%", height: 100, margin: 0 }}
         className="!static !m-0 rounded border border-slate-700/80"
       />
 
