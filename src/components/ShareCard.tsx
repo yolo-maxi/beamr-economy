@@ -559,12 +559,15 @@ function HeroDiagram({
               y={inPositions[i].y - (nodeRadius - 2)}
               width={(nodeRadius - 2) * 2}
               height={(nodeRadius - 2) * 2}
+              style={{ overflow: 'hidden' }}
             >
-              <img
-                src={peer.avatarUrl}
-                crossOrigin="anonymous"
-                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-              />
+              <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', margin: 0, padding: 0, lineHeight: 0 }}>
+                <img
+                  src={peer.avatarUrl}
+                  crossOrigin="anonymous"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
             </foreignObject>
           ) : (
             <text
@@ -660,12 +663,15 @@ function HeroDiagram({
               y={outPositions[i].y - (nodeRadius - 2)}
               width={(nodeRadius - 2) * 2}
               height={(nodeRadius - 2) * 2}
+              style={{ overflow: 'hidden' }}
             >
-              <img
-                src={peer.avatarUrl}
-                crossOrigin="anonymous"
-                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-              />
+              <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', margin: 0, padding: 0, lineHeight: 0 }}>
+                <img
+                  src={peer.avatarUrl}
+                  crossOrigin="anonymous"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
             </foreignObject>
           ) : (
             <text
@@ -834,12 +840,15 @@ function HeroDiagram({
           y={cy - avatarR}
           width={avatarR * 2}
           height={avatarR * 2}
+          style={{ overflow: 'hidden' }}
         >
-          <img
-            src={avatarUrl}
-            crossOrigin="anonymous"
-            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-          />
+          <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', margin: 0, padding: 0, lineHeight: 0 }}>
+            <img
+              src={avatarUrl}
+              crossOrigin="anonymous"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
         </foreignObject>
       ) : (
         <text
