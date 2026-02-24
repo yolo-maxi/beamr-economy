@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { shortenAddress } from "../lib/utils";
+import { fetchUserByUsername } from "../lib/farcaster";
 import type { Edge, Node } from "reactflow";
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
@@ -813,6 +814,13 @@ export default function ShareCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [beamrLogo, setBeamrLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUserByUsername("beamr").then((user) => {
+      if (user?.avatarUrl) setBeamrLogo(user.avatarUrl);
+    });
+  }, []);
 
   // Close on Escape
   useEffect(() => {
@@ -1034,6 +1042,14 @@ export default function ShareCard({
             {/* Footer */}
             <div className="mt-auto flex items-center justify-between border-t border-slate-700/50 pt-1.5">
               <div className="flex items-center gap-2">
+                {beamrLogo && (
+                  <img
+                    src={beamrLogo}
+                    alt="BEAMR"
+                    className="h-5 w-5 rounded-full"
+                    crossOrigin="anonymous"
+                  />
+                )}
                 <span className="text-sm font-bold tracking-wide text-cyan-400">
                   BEAMR
                 </span>
