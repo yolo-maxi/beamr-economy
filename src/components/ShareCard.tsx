@@ -1081,6 +1081,27 @@ export default function ShareCard({
             </svg>
             {capturing ? "Capturing…" : copiedToClipboard ? "✓ Image copied — paste in compose!" : "Share Image"}
           </button>
+          <button
+            onClick={async () => {
+              const canvas = await captureCard();
+              if (!canvas) return;
+              const link = document.createElement("a");
+              link.download = `beamr-flow-${userData.label.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+              link.href = canvas.toDataURL("image/png");
+              link.click();
+            }}
+            disabled={capturing}
+            className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-50"
+            style={{
+              background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+              boxShadow: "0 4px 20px rgba(6, 182, 212, 0.4)",
+            }}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download
+          </button>
         </div>
       </div>
     </div>
