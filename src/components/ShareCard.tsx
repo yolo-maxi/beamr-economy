@@ -8,7 +8,9 @@ import type { Edge, Node } from "reactflow";
 
 async function urlToBase64(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { mode: "cors" });
+    // Use avatar proxy to avoid CORS issues with third-party image hosts
+    const proxyUrl = `/api/avatar?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
     if (!res.ok) return null;
     const blob = await res.blob();
     return new Promise((resolve) => {

@@ -34,14 +34,8 @@ function readUserName(user?: NeynarUser | null) {
   );
 }
 
-function proxyAvatar(url: string | null | undefined): string | null {
-  if (!url) return null;
-  // Route through our avatar proxy for caching + reliability
-  return `/api/avatar?url=${encodeURIComponent(url)}`;
-}
-
 function readAvatarUrl(user?: NeynarUser | null) {
-  return proxyAvatar(user?.pfp_url ?? user?.pfpUrl ?? null);
+  return user?.pfp_url ?? user?.pfpUrl ?? null;
 }
 
 function collectUserAddresses(user?: NeynarUser | null) {
