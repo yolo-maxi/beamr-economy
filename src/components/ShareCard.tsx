@@ -554,14 +554,18 @@ function HeroDiagram({
             filter="url(#glow-in)"
           />
           {peer.avatarUrl ? (
-            <image
-              href={peer.avatarUrl}
+            <foreignObject
               x={inPositions[i].x - (nodeRadius - 2)}
               y={inPositions[i].y - (nodeRadius - 2)}
               width={(nodeRadius - 2) * 2}
               height={(nodeRadius - 2) * 2}
-              clipPath={`url(#clip-in-${i})`}
-            />
+            >
+              <img
+                src={peer.avatarUrl}
+                crossOrigin="anonymous"
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            </foreignObject>
           ) : (
             <text
               x={inPositions[i].x}
@@ -651,14 +655,18 @@ function HeroDiagram({
             filter="url(#glow-out)"
           />
           {peer.avatarUrl ? (
-            <image
-              href={peer.avatarUrl}
+            <foreignObject
               x={outPositions[i].x - (nodeRadius - 2)}
               y={outPositions[i].y - (nodeRadius - 2)}
               width={(nodeRadius - 2) * 2}
               height={(nodeRadius - 2) * 2}
-              clipPath={`url(#clip-out-${i})`}
-            />
+            >
+              <img
+                src={peer.avatarUrl}
+                crossOrigin="anonymous"
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            </foreignObject>
           ) : (
             <text
               x={outPositions[i].x}
@@ -821,14 +829,18 @@ function HeroDiagram({
       {/* ── Center avatar (inside donut hole) ── */}
       <circle cx={cx} cy={cy} r={innerR} fill="#0f172a" />
       {avatarUrl ? (
-        <image
-          href={avatarUrl}
+        <foreignObject
           x={cx - avatarR}
           y={cy - avatarR}
           width={avatarR * 2}
           height={avatarR * 2}
-          clipPath="url(#clip-center)"
-        />
+        >
+          <img
+            src={avatarUrl}
+            crossOrigin="anonymous"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+          />
+        </foreignObject>
       ) : (
         <text
           x={cx}
