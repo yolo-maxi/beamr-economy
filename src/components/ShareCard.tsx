@@ -4,6 +4,47 @@ import { shortenAddress } from "../lib/utils";
 import { fetchUserByUsername } from "../lib/farcaster";
 import type { Edge, Node } from "reactflow";
 
+/* ─── Avatar pre-fetch (convert to base64 for html2canvas) ────────────── */
+
+async function urlToBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function useBase64Avatars(urls: (string | undefined)[]) {
+  const [cache, setCache] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const unique = [...new Set(urls.filter(Boolean))] as string[];
+    let cancelled = false;
+    Promise.all(
+      unique.map(async (url) => {
+        const b64 = await urlToBase64(url);
+        return [url, b64] as const;
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      for (const [url, b64] of results) {
+        if (b64) map[url] = b64;
+      }
+      setCache(map);
+    });
+    return () => { cancelled = true; };
+  }, [urls.join(",")]);
+  return (url?: string) => (url ? cache[url] ?? url : undefined);
+}
+
 /* ─── Types ───────────────────────────────────────────────────────────────── */
 
 type FlowStats = {
@@ -874,6 +915,27 @@ export default function ShareCard({
   const totalIn = incomingStreams.reduce((s, p) => s + p.flowRate, 0n);
   const totalOut = outgoingStreams.reduce((s, p) => s + p.flowRate, 0n);
 
+  // Pre-fetch all avatars as base64 so html2canvas can render them
+  const allAvatarUrls = [
+    userData?.avatarUrl,
+    ...incomingStreams.map((s) => s.avatarUrl),
+    ...outgoingStreams.map((s) => s.avatarUrl),
+    beamrLogo ?? undefined,
+  ];
+  const resolveAvatar = useBase64Avatars(allAvatarUrls);
+
+  // Replace avatar URLs with base64 versions
+  const resolvedIncoming = incomingStreams.map((s) => ({
+    ...s,
+    avatarUrl: resolveAvatar(s.avatarUrl),
+  }));
+  const resolvedOutgoing = outgoingStreams.map((s) => ({
+    ...s,
+    avatarUrl: resolveAvatar(s.avatarUrl),
+  }));
+  const resolvedUserAvatar = resolveAvatar(userData.avatarUrl);
+  const resolvedBeamrLogo = resolveAvatar(beamrLogo ?? undefined) ?? beamrLogo;
+
   if (!userData) return null;
 
   /* ─── Capture → PNG (2x for 1200×630) then share ───────────────────────── */
@@ -1032,9 +1094,9 @@ export default function ShareCard({
             {/* ── HERO: Node diagram (~60-70% of card) ── */}
             <div className="flex flex-1 items-center justify-center">
               <HeroDiagram
-                incoming={incomingStreams}
-                outgoing={outgoingStreams}
-                avatarUrl={userData.avatarUrl}
+                incoming={resolvedIncoming}
+                outgoing={resolvedOutgoing}
+                avatarUrl={resolvedUserAvatar}
                 label={userData.label}
               />
             </div>
@@ -1042,9 +1104,9 @@ export default function ShareCard({
             {/* Footer */}
             <div className="mt-auto flex items-center justify-between border-t border-slate-700/50 pt-1.5">
               <div className="flex items-center gap-2">
-                {beamrLogo && (
+                {resolvedBeamrLogo && (
                   <img
-                    src={beamrLogo}
+                    src={resolvedBeamrLogo}
                     alt="BEAMR"
                     className="h-5 w-5 rounded-full"
                     crossOrigin="anonymous"
