@@ -158,6 +158,10 @@ export async function buildGraphElements(
   // Track edges between node pairs to assign different curvatures
   const edgeCountByPair = new Map<string, number>();
 
+  // Detect likely Beamr booster wallet from multi-distributor pools (or explicit env override)
+  const explicitBoostDistributor = (import.meta.env.VITE_BEAMR_BOOSTER_ADDRESS as string | undefined)?.toLowerCase();
+  const distributorFrequencyInMultiPools = new Map<string, number>();
+
   // First pass: compute pool info and associate with distributors, collect balances
   for (const pool of data.pools) {
     const poolAddress = normalizeAddress(pool.id);
@@ -182,6 +186,19 @@ export async function buildGraphElements(
       perUnitFlowRateLabel,
       memberCount,
     };
+
+    const activeDistributorAddresses = (pool.poolDistributors ?? [])
+      .filter((d) => safeBigInt(d.flowRate) > 0n)
+      .map((d) => normalizeAddress(d.account.id));
+
+    if (activeDistributorAddresses.length > 1) {
+      for (const address of activeDistributorAddresses) {
+        distributorFrequencyInMultiPools.set(
+          address,
+          (distributorFrequencyInMultiPools.get(address) ?? 0) + 1
+        );
+      }
+    }
 
     // Associate pool info with each distributor and collect balances
     for (const distributor of pool.poolDistributors ?? []) {
@@ -215,6 +232,23 @@ export async function buildGraphElements(
     }
   }
 
+  const inferredBoostDistributor = (() => {
+    let winner: string | undefined;
+    let winnerCount = 0;
+    for (const [address, count] of distributorFrequencyInMultiPools.entries()) {
+      if (count > winnerCount) {
+        winner = address;
+        winnerCount = count;
+      }
+    }
+    // Avoid false positives: must appear in at least 2 boosted pools
+    return winnerCount >= 2 ? winner : undefined;
+  })();
+
+  const boostDistributorAddress = explicitBoostDistributor
+    ? normalizeAddress(explicitBoostDistributor)
+    : inferredBoostDistributor;
+
   const ensureUserNode = (address: string) => {
     const normalized = normalizeAddress(address);
     const nodeId = makeAccountNodeId(normalized);
@@ -242,8 +276,29 @@ export async function buildGraphElements(
   // Create edges directly from distributors to members
   for (const pool of data.pools) {
     const poolAddress = normalizeAddress(pool.id);
-    const poolAdminAddress = pool.admin ? normalizeAddress(pool.admin) : undefined;
     const poolDistributors = pool.poolDistributors ?? [];
+    const activeDistributors = poolDistributors
+      .map((d) => ({
+        address: normalizeAddress(d.account.id),
+        flowRate: safeBigInt(d.flowRate),
+      }))
+      .filter((d) => d.flowRate > 0n);
+
+    const hasBoostScenario =
+      !!boostDistributorAddress &&
+      activeDistributors.some((d) => d.address === boostDistributorAddress) &&
+      activeDistributors.some((d) => d.address !== boostDistributorAddress);
+
+    // User receiving the boost = strongest non-booster distributor in this pool
+    const boostedUserAddress = hasBoostScenario
+      ? activeDistributors
+          .filter((d) => d.address !== boostDistributorAddress)
+          .sort((a, b) => (b.flowRate > a.flowRate ? 1 : -1))[0]?.address
+      : undefined;
+
+    const boostedUserId = boostedUserAddress
+      ? makeAccountNodeId(boostedUserAddress)
+      : undefined;
     
     // Ensure all distributor nodes exist
     for (const distributor of poolDistributors) {
@@ -281,7 +336,8 @@ export async function buildGraphElements(
         const distributorAddress = normalizeAddress(distributor.account.id);
         const source = makeAccountNodeId(distributorAddress);
         const target = makeAccountNodeId(memberAddress);
-        const isBoostedFlow = !!poolAdminAddress && distributorAddress !== poolAdminAddress;
+        const isBoostedFlow =
+          hasBoostScenario && distributorAddress === boostDistributorAddress;
         
         // Skip self-edges
         if (source === target) continue;
@@ -323,7 +379,7 @@ export async function buildGraphElements(
             flowRate: distributorMemberFlowRate.toString(),
             units: units.toString(),
             isBoosted: isBoostedFlow,
-            boostedUserId: poolAdminAddress ? makeAccountNodeId(poolAdminAddress) : undefined,
+            boostedUserId,
             poolAddress,
           },
         } as Edge);

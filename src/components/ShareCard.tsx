@@ -44,7 +44,7 @@ function useBase64Avatars(urls: (string | undefined)[]) {
     });
     return () => { cancelled = true; };
   }, [urls.join(",")]);
-  return (url?: string) => (url ? cache[url] ?? url : undefined);
+  return (url?: string) => (url ? cache[url] : undefined);
 }
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
@@ -899,41 +899,53 @@ export default function ShareCard({
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const userData = selectedNode?.data as UserData | undefined;
 
-  const incomingStreams: StreamPeer[] = edges
-    .filter((e) => e.target === selectedNodeId)
-    .map((edge) => {
-      const src = nodes.find((n) => n.id === edge.source);
-      const srcData = src?.data as UserData | undefined;
-      const fr = BigInt(edge.data?.flowRate ?? "0");
-      return {
+  const incomingByUser = new Map<string, StreamPeer>();
+  for (const edge of edges.filter((e) => e.target === selectedNodeId)) {
+    const src = nodes.find((n) => n.id === edge.source);
+    const srcData = src?.data as UserData | undefined;
+    const fr = BigInt((edge.data as { flowRate?: string } | undefined)?.flowRate ?? "0");
+    const existing = incomingByUser.get(edge.source);
+    if (existing) {
+      existing.flowRate += fr;
+      existing.dailyFormatted = formatDailyRate(existing.flowRate);
+    } else {
+      incomingByUser.set(edge.source, {
         id: edge.source,
-        label:
-          srcData?.label ??
-          shortenAddress(edge.source.replace("account:", "")),
+        label: srcData?.label ?? shortenAddress(edge.source.replace("account:", "")),
         avatarUrl: srcData?.avatarUrl,
         flowRate: fr,
         dailyFormatted: formatDailyRate(fr),
-      };
-    })
-    .sort((a, b) => (b.flowRate > a.flowRate ? 1 : -1));
+      });
+    }
+  }
 
-  const outgoingStreams: StreamPeer[] = edges
-    .filter((e) => e.source === selectedNodeId)
-    .map((edge) => {
-      const tgt = nodes.find((n) => n.id === edge.target);
-      const tgtData = tgt?.data as UserData | undefined;
-      const fr = BigInt(edge.data?.flowRate ?? "0");
-      return {
+  const incomingStreams: StreamPeer[] = Array.from(incomingByUser.values()).sort((a, b) =>
+    b.flowRate > a.flowRate ? 1 : -1
+  );
+
+  const outgoingByUser = new Map<string, StreamPeer>();
+  for (const edge of edges.filter((e) => e.source === selectedNodeId)) {
+    const tgt = nodes.find((n) => n.id === edge.target);
+    const tgtData = tgt?.data as UserData | undefined;
+    const fr = BigInt((edge.data as { flowRate?: string } | undefined)?.flowRate ?? "0");
+    const existing = outgoingByUser.get(edge.target);
+    if (existing) {
+      existing.flowRate += fr;
+      existing.dailyFormatted = formatDailyRate(existing.flowRate);
+    } else {
+      outgoingByUser.set(edge.target, {
         id: edge.target,
-        label:
-          tgtData?.label ??
-          shortenAddress(edge.target.replace("account:", "")),
+        label: tgtData?.label ?? shortenAddress(edge.target.replace("account:", "")),
         avatarUrl: tgtData?.avatarUrl,
         flowRate: fr,
         dailyFormatted: formatDailyRate(fr),
-      };
-    })
-    .sort((a, b) => (b.flowRate > a.flowRate ? 1 : -1));
+      });
+    }
+  }
+
+  const outgoingStreams: StreamPeer[] = Array.from(outgoingByUser.values()).sort((a, b) =>
+    b.flowRate > a.flowRate ? 1 : -1
+  );
 
   const totalIn = incomingStreams.reduce((s, p) => s + p.flowRate, 0n);
   const totalOut = outgoingStreams.reduce((s, p) => s + p.flowRate, 0n);
