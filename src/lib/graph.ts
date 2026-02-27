@@ -47,6 +47,8 @@ type UserNodeData = {
 };
 
 const DEFAULT_DECIMALS = 18;
+const BOOST_EDGE_COLOR = "#a855f7";
+const NORMAL_EDGE_COLOR = "#38bdf8";
 
 const makeAccountNodeId = (address: string) => `account:${address}`;
 const DEFAULT_FARCASTER_TIMEOUT_MS = 4000;
@@ -240,6 +242,7 @@ export async function buildGraphElements(
   // Create edges directly from distributors to members
   for (const pool of data.pools) {
     const poolAddress = normalizeAddress(pool.id);
+    const poolAdminAddress = pool.admin ? normalizeAddress(pool.admin) : undefined;
     const poolDistributors = pool.poolDistributors ?? [];
     
     // Ensure all distributor nodes exist
@@ -274,10 +277,11 @@ export async function buildGraphElements(
       for (const distributor of poolDistributors) {
         const distributorFlow = safeBigInt(distributor.flowRate);
         if (distributorFlow <= 0n) continue; // skip inactive distributors
-        
+
         const distributorAddress = normalizeAddress(distributor.account.id);
         const source = makeAccountNodeId(distributorAddress);
         const target = makeAccountNodeId(memberAddress);
+        const isBoostedFlow = !!poolAdminAddress && distributorAddress !== poolAdminAddress;
         
         // Skip self-edges
         if (source === target) continue;
@@ -312,12 +316,15 @@ export async function buildGraphElements(
           },
           style: {
             strokeWidth,
-            stroke: "#38bdf8",
+            stroke: isBoostedFlow ? BOOST_EDGE_COLOR : NORMAL_EDGE_COLOR,
             strokeDasharray: canComputeFlows ? undefined : "6 4",
           },
           data: {
             flowRate: distributorMemberFlowRate.toString(),
             units: units.toString(),
+            isBoosted: isBoostedFlow,
+            boostedUserId: poolAdminAddress ? makeAccountNodeId(poolAdminAddress) : undefined,
+            poolAddress,
           },
         } as Edge);
         

@@ -33,6 +33,7 @@ import UserProfilePanel from "./UserProfilePanel";
 import FindYourselfModal, { shouldShowFindYourselfModal } from "./FindYourselfModal";
 
 const POLL_INTERVAL_MS = 60_000;
+const BOOST_EDGE_COLOR = "#a855f7";
 const NODE_TYPES = {
   user: UserNode,
 };
@@ -414,7 +415,12 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
         }),
         styledEdges: baseEdges.map((edge) => {
           if (!filteredEdgeIds.has(edge.id)) return edge;
-          const stroke = filterMode === "only-receive" ? "#22c55e" : "#ef4444";
+          const isBoosted = Boolean((edge.data as { isBoosted?: boolean } | undefined)?.isBoosted);
+          const stroke = isBoosted
+            ? BOOST_EDGE_COLOR
+            : filterMode === "only-receive"
+            ? "#22c55e"
+            : "#ef4444";
           return {
             ...edge,
             style: {
@@ -460,12 +466,14 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
       if (!connectedEdgeIds.has(edge.id)) return edge;
       const isDownstream = edge.source === activeNodeId;
       const isUpstream = edge.target === activeNodeId;
-      const stroke =
-        isDownstream && isUpstream
-          ? "#facc15"
-          : isUpstream
-          ? "#22c55e"
-          : "#ef4444";
+      const isBoosted = Boolean((edge.data as { isBoosted?: boolean } | undefined)?.isBoosted);
+      const stroke = isBoosted
+        ? BOOST_EDGE_COLOR
+        : isDownstream && isUpstream
+        ? "#facc15"
+        : isUpstream
+        ? "#22c55e"
+        : "#ef4444";
       return {
         ...edge,
         style: {
@@ -1236,6 +1244,13 @@ function NavigationPanel({
         >
           ↑ Only Send ({onlySendCount})
         </button>
+      </div>
+
+      <div className="rounded border border-purple-500/30 bg-slate-900/90 px-2 py-1 text-[9px] text-purple-200">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
+          Boosted flows (Beamr-paid)
+        </span>
       </div>
 
       {/* Top Streamers */}
