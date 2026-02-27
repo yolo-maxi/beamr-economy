@@ -29,6 +29,17 @@ type FlowStats = {
   userCount: number;
 };
 
+type BoostSource = {
+  address: string;
+  flowRate: bigint;
+};
+
+type BoostInfo = {
+  totalFlowRate: bigint;
+  sources: BoostSource[];
+  poolCount: number;
+};
+
 type UserNodeData = {
   address: string;
   label: string;
@@ -44,10 +55,11 @@ type UserNodeData = {
   balance?: string;
   /** Last activity timestamp (from account updatedAtTimestamp) */
   updatedAtTimestamp?: string;
+  /** Beamr-funded boost info for this user */
+  boost?: BoostInfo;
 };
 
 const DEFAULT_DECIMALS = 18;
-const BOOST_EDGE_COLOR = "#a855f7";
 const NORMAL_EDGE_COLOR = "#38bdf8";
 
 const makeAccountNodeId = (address: string) => `account:${address}`;
@@ -149,6 +161,9 @@ export async function buildGraphElements(
   const incomingFlowsByUser = new Map<string, { totalFlowRate: bigint; senders: Set<string> }>();
   const outgoingFlowsByUser = new Map<string, { totalFlowRate: bigint; receivers: Set<string> }>();
 
+  // Track Beamr boost info by boosted user
+  const boostByUser = new Map<string, { totalFlowRate: bigint; poolCount: number; sources: Map<string, bigint> }>();
+
   // Track balances per user
   const balanceByUser = new Map<string, string>();
 
@@ -249,8 +264,12 @@ export async function buildGraphElements(
     ? normalizeAddress(explicitBoostDistributor)
     : inferredBoostDistributor;
 
+  const hiddenSystemAddresses = new Set<string>();
+  if (boostDistributorAddress) hiddenSystemAddresses.add(boostDistributorAddress);
+
   const ensureUserNode = (address: string) => {
     const normalized = normalizeAddress(address);
+    if (hiddenSystemAddresses.has(normalized)) return;
     const nodeId = makeAccountNodeId(normalized);
     if (nodeIdSet.has(nodeId)) return;
     const distributedPools = poolInfoByDistributor.get(normalized);
@@ -273,7 +292,7 @@ export async function buildGraphElements(
     userAddresses.add(normalized);
   };
 
-  // Create edges directly from distributors to members
+  // Create edges between actual users (system booster is hidden)
   for (const pool of data.pools) {
     const poolAddress = normalizeAddress(pool.id);
     const poolDistributors = pool.poolDistributors ?? [];
@@ -289,21 +308,37 @@ export async function buildGraphElements(
       activeDistributors.some((d) => d.address === boostDistributorAddress) &&
       activeDistributors.some((d) => d.address !== boostDistributorAddress);
 
-    // User receiving the boost = strongest non-booster distributor in this pool
+    // Boosted user = strongest non-booster distributor in pool
     const boostedUserAddress = hasBoostScenario
       ? activeDistributors
           .filter((d) => d.address !== boostDistributorAddress)
           .sort((a, b) => (b.flowRate > a.flowRate ? 1 : -1))[0]?.address
       : undefined;
 
-    const boostedUserId = boostedUserAddress
-      ? makeAccountNodeId(boostedUserAddress)
-      : undefined;
-    
-    // Ensure all distributor nodes exist
+    if (hasBoostScenario && boostedUserAddress) {
+      const boostSources = activeDistributors.filter(
+        (d) => d.address === boostDistributorAddress
+      );
+      const boostTotalFlowRate = boostSources.reduce((sum, s) => sum + s.flowRate, 0n);
+      const existingBoost = boostByUser.get(boostedUserAddress) ?? {
+        totalFlowRate: 0n,
+        poolCount: 0,
+        sources: new Map<string, bigint>(),
+      };
+      existingBoost.totalFlowRate += boostTotalFlowRate;
+      existingBoost.poolCount += 1;
+      for (const source of boostSources) {
+        existingBoost.sources.set(
+          source.address,
+          (existingBoost.sources.get(source.address) ?? 0n) + source.flowRate
+        );
+      }
+      boostByUser.set(boostedUserAddress, existingBoost);
+    }
+
+    // Ensure visible distributor nodes exist (skip hidden system addresses)
     for (const distributor of poolDistributors) {
-      const distributorAddress = normalizeAddress(distributor.account.id);
-      ensureUserNode(distributorAddress);
+      ensureUserNode(distributor.account.id);
     }
 
     const perUnitFlowRate = perUnitFlowRateByPool.get(poolAddress) ?? 0n;
@@ -318,81 +353,130 @@ export async function buildGraphElements(
         units = 0n;
       }
       if (units <= 0n) continue;
-      const memberFlowRate = canComputeFlows ? perUnitFlowRate * units : 0n;
 
       const memberAddress = normalizeAddress(member.account.id);
+      if (hiddenSystemAddresses.has(memberAddress)) continue;
       ensureUserNode(memberAddress);
-      
-      // Compute total distributor flow for proportional attribution
-      const totalDistributorFlow = poolDistributors.reduce(
-        (sum, d) => sum + safeBigInt(d.flowRate), 0n
-      );
 
-      // Create edge from each distributor to this member
-      for (const distributor of poolDistributors) {
-        const distributorFlow = safeBigInt(distributor.flowRate);
-        if (distributorFlow <= 0n) continue; // skip inactive distributors
+      const memberFlowRate = canComputeFlows ? perUnitFlowRate * units : 0n;
 
-        const distributorAddress = normalizeAddress(distributor.account.id);
-        const source = makeAccountNodeId(distributorAddress);
+      // In boosted pools, collapse flows to boosted user only (hide system booster)
+      if (hasBoostScenario && boostedUserAddress) {
+        const source = makeAccountNodeId(boostedUserAddress);
         const target = makeAccountNodeId(memberAddress);
-        const isBoostedFlow =
-          hasBoostScenario && distributorAddress === boostDistributorAddress;
-        
-        // Skip self-edges
         if (source === target) continue;
-        
-        // Attribute flow proportionally: this distributor's share of total pool flow to this member
-        const distributorMemberFlowRate = totalDistributorFlow > 0n
-          ? (memberFlowRate * distributorFlow) / totalDistributorFlow
-          : 0n;
-        
-        // Create a key for this source-target pair to track edge count
+
         const pairKey = `${source}-${target}`;
         const edgeIndex = edgeCountByPair.get(pairKey) ?? 0;
         edgeCountByPair.set(pairKey, edgeIndex + 1);
-        
-        // Assign high alternating curvature for maximum separation
-        // First edge curves one way, second edge curves the opposite way
-        // Using maximum curvature values (1.0 and -1.0) for clear visual separation
         const curvature = edgeIndex % 2 === 0 ? 1.0 : -1.0;
-        
+
+        const flowRateStr = memberFlowRate.toString();
+        const strokeWidth = canComputeFlows
+          ? flowRateToStrokeWidth(flowRateStr)
+          : 1.5;
+
+        edges.push({
+          id: `distribution:${poolAddress}:${boostedUserAddress}:${memberAddress}`,
+          source,
+          target,
+          type: "simplebezier",
+          animated: true,
+          pathOptions: { curvature },
+          style: {
+            strokeWidth,
+            stroke: NORMAL_EDGE_COLOR,
+            strokeDasharray: canComputeFlows ? undefined : "6 4",
+          },
+          data: {
+            flowRate: flowRateStr,
+            units: units.toString(),
+            poolAddress,
+          },
+        } as Edge);
+
+        const memberIncoming = incomingFlowsByUser.get(memberAddress) ?? {
+          totalFlowRate: 0n,
+          senders: new Set<string>(),
+        };
+        memberIncoming.totalFlowRate += memberFlowRate;
+        memberIncoming.senders.add(boostedUserAddress);
+        incomingFlowsByUser.set(memberAddress, memberIncoming);
+
+        const distributorOutgoing = outgoingFlowsByUser.get(boostedUserAddress) ?? {
+          totalFlowRate: 0n,
+          receivers: new Set<string>(),
+        };
+        distributorOutgoing.totalFlowRate += memberFlowRate;
+        distributorOutgoing.receivers.add(memberAddress);
+        outgoingFlowsByUser.set(boostedUserAddress, distributorOutgoing);
+
+        continue;
+      }
+
+      // Normal pools: attribute proportionally to each visible distributor
+      const totalDistributorFlow = poolDistributors.reduce(
+        (sum, d) => sum + safeBigInt(d.flowRate),
+        0n
+      );
+
+      for (const distributor of poolDistributors) {
+        const distributorFlow = safeBigInt(distributor.flowRate);
+        if (distributorFlow <= 0n) continue;
+
+        const distributorAddress = normalizeAddress(distributor.account.id);
+        if (hiddenSystemAddresses.has(distributorAddress)) continue;
+
+        const source = makeAccountNodeId(distributorAddress);
+        const target = makeAccountNodeId(memberAddress);
+        if (source === target) continue;
+
+        const distributorMemberFlowRate =
+          totalDistributorFlow > 0n
+            ? (memberFlowRate * distributorFlow) / totalDistributorFlow
+            : 0n;
+
+        const pairKey = `${source}-${target}`;
+        const edgeIndex = edgeCountByPair.get(pairKey) ?? 0;
+        edgeCountByPair.set(pairKey, edgeIndex + 1);
+        const curvature = edgeIndex % 2 === 0 ? 1.0 : -1.0;
+
         const flowRateStr = distributorMemberFlowRate.toString();
         const strokeWidth = canComputeFlows
           ? flowRateToStrokeWidth(flowRateStr)
           : 1.5;
+
         edges.push({
           id: `distribution:${poolAddress}:${distributorAddress}:${memberAddress}`,
           source,
           target,
           type: "simplebezier",
           animated: true,
-          pathOptions: {
-            curvature,
-          },
+          pathOptions: { curvature },
           style: {
             strokeWidth,
-            stroke: isBoostedFlow ? BOOST_EDGE_COLOR : NORMAL_EDGE_COLOR,
+            stroke: NORMAL_EDGE_COLOR,
             strokeDasharray: canComputeFlows ? undefined : "6 4",
           },
           data: {
-            flowRate: distributorMemberFlowRate.toString(),
+            flowRate: flowRateStr,
             units: units.toString(),
-            isBoosted: isBoostedFlow,
-            boostedUserId,
             poolAddress,
           },
         } as Edge);
-        
-        // Track flow stats for both parties
-        // Incoming flows for the member (receiver)
-        const memberIncoming = incomingFlowsByUser.get(memberAddress) ?? { totalFlowRate: 0n, senders: new Set<string>() };
+
+        const memberIncoming = incomingFlowsByUser.get(memberAddress) ?? {
+          totalFlowRate: 0n,
+          senders: new Set<string>(),
+        };
         memberIncoming.totalFlowRate += distributorMemberFlowRate;
         memberIncoming.senders.add(distributorAddress);
         incomingFlowsByUser.set(memberAddress, memberIncoming);
-        
-        // Outgoing flows for the distributor (sender)
-        const distributorOutgoing = outgoingFlowsByUser.get(distributorAddress) ?? { totalFlowRate: 0n, receivers: new Set<string>() };
+
+        const distributorOutgoing = outgoingFlowsByUser.get(distributorAddress) ?? {
+          totalFlowRate: 0n,
+          receivers: new Set<string>(),
+        };
         distributorOutgoing.totalFlowRate += distributorMemberFlowRate;
         distributorOutgoing.receivers.add(memberAddress);
         outgoingFlowsByUser.set(distributorAddress, distributorOutgoing);
@@ -421,20 +505,35 @@ export async function buildGraphElements(
     // Get flow stats for this user
     const incomingStats = incomingFlowsByUser.get(data.address);
     const outgoingStats = outgoingFlowsByUser.get(data.address);
-    
+    const boostStats = boostByUser.get(data.address);
+
     node.data = {
       ...data,
       farcaster,
       avatarUrl: profile?.avatarUrl,
       label: farcaster ? `@${farcaster}` : data.label,
-      incomingFlows: incomingStats ? {
-        totalFlowRate: incomingStats.totalFlowRate,
-        userCount: incomingStats.senders.size,
-      } : undefined,
-      outgoingFlows: outgoingStats ? {
-        totalFlowRate: outgoingStats.totalFlowRate,
-        userCount: outgoingStats.receivers.size,
-      } : undefined,
+      incomingFlows: incomingStats
+        ? {
+            totalFlowRate: incomingStats.totalFlowRate,
+            userCount: incomingStats.senders.size,
+          }
+        : undefined,
+      outgoingFlows: outgoingStats
+        ? {
+            totalFlowRate: outgoingStats.totalFlowRate,
+            userCount: outgoingStats.receivers.size,
+          }
+        : undefined,
+      boost: boostStats
+        ? {
+            totalFlowRate: boostStats.totalFlowRate,
+            poolCount: boostStats.poolCount,
+            sources: Array.from(boostStats.sources.entries()).map(([address, flowRate]) => ({
+              address,
+              flowRate,
+            })),
+          }
+        : undefined,
     };
   }
 

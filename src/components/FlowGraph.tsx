@@ -33,7 +33,6 @@ import UserProfilePanel from "./UserProfilePanel";
 import FindYourselfModal, { shouldShowFindYourselfModal } from "./FindYourselfModal";
 
 const POLL_INTERVAL_MS = 60_000;
-const BOOST_EDGE_COLOR = "#a855f7";
 const NODE_TYPES = {
   user: UserNode,
 };
@@ -415,12 +414,7 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
         }),
         styledEdges: baseEdges.map((edge) => {
           if (!filteredEdgeIds.has(edge.id)) return edge;
-          const isBoosted = Boolean((edge.data as { isBoosted?: boolean } | undefined)?.isBoosted);
-          const stroke = isBoosted
-            ? BOOST_EDGE_COLOR
-            : filterMode === "only-receive"
-            ? "#22c55e"
-            : "#ef4444";
+          const stroke = filterMode === "only-receive" ? "#22c55e" : "#ef4444";
           return {
             ...edge,
             style: {
@@ -466,14 +460,12 @@ export default function FlowGraph({ onStreamCountChange }: FlowGraphProps) {
       if (!connectedEdgeIds.has(edge.id)) return edge;
       const isDownstream = edge.source === activeNodeId;
       const isUpstream = edge.target === activeNodeId;
-      const isBoosted = Boolean((edge.data as { isBoosted?: boolean } | undefined)?.isBoosted);
-      const stroke = isBoosted
-        ? BOOST_EDGE_COLOR
-        : isDownstream && isUpstream
-        ? "#facc15"
-        : isUpstream
-        ? "#22c55e"
-        : "#ef4444";
+      const stroke =
+        isDownstream && isUpstream
+          ? "#facc15"
+          : isUpstream
+          ? "#22c55e"
+          : "#ef4444";
       return {
         ...edge,
         style: {
@@ -774,6 +766,11 @@ type UserNodeProps = {
     outgoingFlows?: FlowStats;
     balance?: string;
     updatedAtTimestamp?: string;
+    boost?: {
+      totalFlowRate: bigint;
+      poolCount: number;
+      sources: { address: string; flowRate: bigint }[];
+    };
   };
 };
 
@@ -1009,8 +1006,11 @@ function UserNode({ data }: UserNodeProps) {
             )}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="truncate text-lg font-bold text-slate-100">
-              {data.label}
+            <div className="flex items-center gap-1 truncate text-lg font-bold text-slate-100">
+              <span className="truncate">{data.label}</span>
+              {data.boost && data.boost.totalFlowRate > 0n && (
+                <span className="text-purple-300" title={`Boosted by Beamr: ${formatCompactFlowRate(data.boost.totalFlowRate)}/day`}>⚡</span>
+              )}
             </div>
             <div className="text-[11px] text-sky-200/70">
               {shortenAddress(data.address)}
@@ -1094,6 +1094,9 @@ function UserNode({ data }: UserNodeProps) {
             <span className="truncate text-sm font-medium text-slate-200">
               {data.label}
             </span>
+            {data.boost && data.boost.totalFlowRate > 0n && (
+              <span className="text-purple-300" title={`Boosted by Beamr: ${formatCompactFlowRate(data.boost.totalFlowRate)}/day`}>⚡</span>
+            )}
             {hasFlowStats && (
               <FlowStatsDisplay incoming={data.incomingFlows} outgoing={data.outgoingFlows} compact />
             )}
@@ -1244,13 +1247,6 @@ function NavigationPanel({
         >
           ↑ Only Send ({onlySendCount})
         </button>
-      </div>
-
-      <div className="rounded border border-purple-500/30 bg-slate-900/90 px-2 py-1 text-[9px] text-purple-200">
-        <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
-          Boosted flows (Beamr-paid)
-        </span>
       </div>
 
       {/* Top Streamers */}

@@ -26,6 +26,11 @@ type UserData = {
   distributedPools?: PoolInfo[];
   incomingFlows?: FlowStats;
   outgoingFlows?: FlowStats;
+  boost?: {
+    totalFlowRate: bigint;
+    poolCount: number;
+    sources: { address: string; flowRate: bigint }[];
+  };
 };
 
 type StreamInfo = {
@@ -107,54 +112,20 @@ export default function UserProfilePanel({
     s.weight = totalOutgoing > 0n ? Number((s.flowRate * 10000n) / totalOutgoing) / 100 : 0;
   });
 
-  // Boosted flows: external distributors (e.g. Beamr) funding this user's pool
-  const boostedEdges = edges.filter(
-    (e) =>
-      Boolean((e.data as { isBoosted?: boolean } | undefined)?.isBoosted) &&
-      (e.data as { boostedUserId?: string } | undefined)?.boostedUserId === selectedNodeId
-  );
-
-  const boostedTotal = boostedEdges.reduce(
-    (sum, e) => sum + BigInt((e.data as { flowRate?: string } | undefined)?.flowRate ?? "0"),
-    0n
-  );
-
-  const boostedRecipientsById = new Map<string, StreamInfo>();
-  const boostedSourcesById = new Map<string, StreamInfo>();
-
-  for (const edge of boostedEdges) {
-    const edgeData = edge.data as { flowRate?: string } | undefined;
-    const flowRate = BigInt(edgeData?.flowRate ?? "0");
-
-    const targetNode = nodes.find((n) => n.id === edge.target);
-    const targetData = targetNode?.data as UserData | undefined;
-    const recipient = boostedRecipientsById.get(edge.target) ?? {
-      userId: edge.target,
-      label: targetData?.label ?? shortenAddress(edge.target.replace("account:", "")),
-      avatarUrl: targetData?.avatarUrl,
-      flowRate: 0n,
-    };
-    recipient.flowRate += flowRate;
-    boostedRecipientsById.set(edge.target, recipient);
-
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const sourceData = sourceNode?.data as UserData | undefined;
-    const source = boostedSourcesById.get(edge.source) ?? {
-      userId: edge.source,
-      label: sourceData?.label ?? shortenAddress(edge.source.replace("account:", "")),
-      avatarUrl: sourceData?.avatarUrl,
-      flowRate: 0n,
-    };
-    source.flowRate += flowRate;
-    boostedSourcesById.set(edge.source, source);
-  }
-
-  const boostedRecipients = Array.from(boostedRecipientsById.values()).sort((a, b) =>
-    b.flowRate > a.flowRate ? 1 : -1
-  );
-  const boostedSources = Array.from(boostedSourcesById.values()).sort((a, b) =>
-    b.flowRate > a.flowRate ? 1 : -1
-  );
+  const boostedTotal = userData.boost?.totalFlowRate ?? 0n;
+  const boostedSources: StreamInfo[] = (userData.boost?.sources ?? [])
+    .map((source) => {
+      const sourceNodeId = `account:${source.address.toLowerCase()}`;
+      const sourceNode = nodes.find((n) => n.id === sourceNodeId);
+      const sourceData = sourceNode?.data as UserData | undefined;
+      return {
+        userId: sourceNodeId,
+        label: sourceData?.label ?? shortenAddress(source.address),
+        avatarUrl: sourceData?.avatarUrl,
+        flowRate: source.flowRate,
+      };
+    })
+    .sort((a, b) => (b.flowRate > a.flowRate ? 1 : -1));
 
   return (
     <div className="fixed right-4 top-4 z-50 w-80 max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-900/95 shadow-xl shadow-cyan-500/10 ring-1 ring-cyan-400/20 backdrop-blur-sm sm:right-6 sm:top-6">
@@ -178,6 +149,9 @@ export default function UserProfilePanel({
             <h3 className="truncate text-sm font-semibold text-slate-100">
               {userData.label}
             </h3>
+            {boostedTotal > 0n && (
+              <span className="text-purple-300" title="Boosted by Beamr">⚡</span>
+            )}
             {userData.farcaster && !userData.label.includes(userData.farcaster) && (
               <a
                 href={`https://farcaster.xyz/${userData.farcaster}`}
@@ -256,7 +230,7 @@ export default function UserProfilePanel({
             </div>
           </div>
           <div className="mt-1 text-[10px] text-purple-200/80">
-            {boostedSources.length} boost source{boostedSources.length !== 1 ? "s" : ""} helping {boostedRecipients.length} recipient{boostedRecipients.length !== 1 ? "s" : ""}
+            {boostedSources.length} boost source{boostedSources.length !== 1 ? "s" : ""} across {userData.boost?.poolCount ?? 0} pool{(userData.boost?.poolCount ?? 0) !== 1 ? "s" : ""}
           </div>
           {boostedSources.length > 0 && (
             <div className="mt-2 text-[10px] text-slate-300">
@@ -326,20 +300,7 @@ export default function UserProfilePanel({
           </div>
         )}
 
-        {boostedRecipients.length > 0 && (
-          <div className="border-t border-slate-700/50">
-            <div className="px-4 py-2 text-xs font-medium text-purple-300">
-              ⚡ Boosted Recipients ({boostedRecipients.length})
-            </div>
-            <div className="max-h-40 overflow-y-auto px-2 pb-2">
-              {boostedRecipients.map((stream) => (
-                <StreamRow key={`boost-${stream.userId}`} stream={stream} type="boosted" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {incomingStreams.length === 0 && outgoingStreams.length === 0 && boostedRecipients.length === 0 && (
+        {incomingStreams.length === 0 && outgoingStreams.length === 0 && boostedTotal === 0n && (
           <div className="px-4 py-6 text-center text-xs text-slate-500">
             No active streams
           </div>
@@ -385,19 +346,9 @@ export default function UserProfilePanel({
   );
 }
 
-function StreamRow({ stream, type }: { stream: StreamInfo; type: "incoming" | "outgoing" | "boosted" }) {
-  const colorClass =
-    type === "incoming"
-      ? "text-emerald-400"
-      : type === "outgoing"
-      ? "text-red-400"
-      : "text-purple-300";
-  const bgClass =
-    type === "incoming"
-      ? "bg-emerald-500/20"
-      : type === "outgoing"
-      ? "bg-red-500/20"
-      : "bg-purple-500/20";
+function StreamRow({ stream, type }: { stream: StreamInfo; type: "incoming" | "outgoing" }) {
+  const colorClass = type === "incoming" ? "text-emerald-400" : "text-red-400";
+  const bgClass = type === "incoming" ? "bg-emerald-500/20" : "bg-red-500/20";
 
   return (
     <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-800/50">
